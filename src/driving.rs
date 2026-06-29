@@ -3,6 +3,8 @@
 //! Coordinates follow the Bevy 2D convention used by the app shell: `x`
 //! increases to the right, and `y` increases upward along the road.
 
+const STOP_EPSILON: f32 = 0.001;
+
 /// Minimal vector type that keeps the driving model free of Bevy/glam dependencies.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vec2 {
@@ -106,6 +108,10 @@ impl CarState {
             self.speed = (self.speed - drag_amount).max(0.0);
         } else if self.speed < 0.0 {
             self.speed = (self.speed + drag_amount).min(0.0);
+        }
+
+        if self.speed.abs() < STOP_EPSILON {
+            self.speed = 0.0;
         }
     }
 }
@@ -235,5 +241,21 @@ mod tests {
         assert!(car.heading_radians.is_finite());
         assert!(car.position.x.is_finite());
         assert!(car.position.y.is_finite());
+    }
+
+    #[test]
+    fn tiny_drift_speeds_snap_to_zero() {
+        let tuning = DrivingTuning {
+            drag: 0.0,
+            ..DrivingTuning::default()
+        };
+        let mut car = CarState {
+            speed: STOP_EPSILON / 2.0,
+            ..CarState::default()
+        };
+
+        car.step(DriverInput::default(), tuning, 1.0 / 60.0);
+
+        assert_eq!(car.speed, 0.0);
     }
 }

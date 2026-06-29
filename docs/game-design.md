@@ -49,6 +49,5 @@ Success for the initial skeleton is a compiling Bevy app plus unit-tested accele
 
 - Keep car movement tuning centralized.
 - Prefer gentle correction and recovery over failure states.
-- Separate pure gameplay math from Bevy systems where practical.
+- Separate pure gameplay math from Bevy systems where practical. The initial driving model uses a tiny local `Vec2` to avoid pulling Bevy/glam into library tests; switch to `glam` if the math surface grows beyond simple position storage.
 - Keep visual placeholders intentionally simple until the driving loop feels right.
-
