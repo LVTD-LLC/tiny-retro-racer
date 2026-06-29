@@ -5,8 +5,17 @@ edition = "2021"
 license = "MIT"
 description = "A kid-friendly retro arcade racing game built with Rust and Bevy."
 
+[features]
+default = ["game"]
+game = ["dep:bevy"]
+
 [dependencies]
-bevy = "0.19"
+bevy = { version = "0.19", optional = true }
+
+[[bin]]
+name = "tiny-retro-racer"
+path = "src/main.rs"
+required-features = ["game"]
 
 [profile.dev]
 opt-level = 1
