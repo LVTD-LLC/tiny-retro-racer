@@ -46,6 +46,7 @@ Current first-playable baseline:
 - Single controllable car on a closed oval placeholder circuit.
 - Track recovery clamps the car back onto the road instead of failing or getting stuck.
 - Smooth follow camera offsets behind the car so more road ahead remains visible.
+- Generated low-resolution pixel-art car, start line, and scenery textures render with nearest filtering.
 
 ## Project Links
 

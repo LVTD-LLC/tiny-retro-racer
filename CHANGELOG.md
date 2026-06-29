@@ -14,3 +14,4 @@
 - Expanded research notes with Bevy 0.19 movement/state/camera references and a practical Steam/Steam Deck release checklist.
 - Added a manual first-playable verification checklist and desktop build notes.
 - Added a manual GitHub Actions workflow for macOS and Windows release artifacts.
+- Added generated low-resolution pixel-art textures with nearest filtering for the first retro visual pass.

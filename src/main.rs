@@ -1,4 +1,8 @@
-use bevy::prelude::*;
+use bevy::{
+    asset::RenderAssetUsages,
+    prelude::*,
+    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
+};
 use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning};
 use tiny_retro_racer::track::TrackSpec;
 
@@ -53,15 +57,19 @@ fn main() {
         .insert_resource(Tuning(DrivingTuning::default()))
         .insert_resource(Track(TrackSpec::default()))
         .insert_resource(Time::<Fixed>::from_hz(60.0))
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Tiny Retro Racer".into(),
-                resolution: bevy::window::WindowResolution::new(960, 540),
-                resizable: true,
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(ImagePlugin::default_nearest())
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Tiny Retro Racer".into(),
+                        resolution: bevy::window::WindowResolution::new(960, 540),
+                        resizable: true,
+                        ..default()
+                    }),
+                    ..default()
+                }),
+        )
         .init_state::<GameState>()
         .add_systems(Startup, setup_camera)
         .add_systems(OnEnter(GameState::Start), setup_start_screen)
@@ -156,6 +164,7 @@ fn setup_start_screen(mut commands: Commands) {
 
 fn setup_playing(
     mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     track: Res<Track>,
@@ -165,6 +174,10 @@ fn setup_playing(
     let outer = track_spec.outer_radii();
     let center = track_spec.center_radii();
     let start_state = track_spec.start_state();
+    let car_image = images.add(car_pixel_art());
+    let start_line_image = images.add(start_line_pixel_art());
+    let tree_image = images.add(tree_pixel_art());
+    let barrier_image = images.add(barrier_pixel_art());
 
     commands.spawn((
         DespawnOnExit(GameState::Playing),
@@ -195,16 +208,23 @@ fn setup_playing(
 
     commands.spawn((
         DespawnOnExit(GameState::Playing),
-        Sprite::from_color(Color::srgb(0.95, 0.95, 0.88), Vec2::new(96.0, 10.0)),
+        Sprite {
+            image: start_line_image,
+            custom_size: Some(Vec2::new(112.0, 16.0)),
+            ..default()
+        },
         Transform::from_xyz(0.0, -center.y, 2.0),
     ));
 
+    spawn_pixel_scenery(&mut commands, tree_image, barrier_image);
+
     commands.spawn((
         DespawnOnExit(GameState::Playing),
-        Sprite::from_color(
-            Color::srgb(0.92, 0.18, 0.2),
-            Vec2::new(CAR_WIDTH, CAR_LENGTH),
-        ),
+        Sprite {
+            image: car_image,
+            custom_size: Some(Vec2::new(CAR_WIDTH, CAR_LENGTH)),
+            ..default()
+        },
         Transform::from_xyz(start_state.position.x, start_state.position.y, 3.0)
             .with_rotation(Quat::from_rotation_z(-start_state.heading_radians)),
         PlayerCar,
@@ -226,6 +246,139 @@ fn setup_playing(
             ..default()
         },
     ));
+}
+
+fn spawn_pixel_scenery(
+    commands: &mut Commands,
+    tree_image: Handle<Image>,
+    barrier_image: Handle<Image>,
+) {
+    for (x, y, size) in [
+        (-360.0, -245.0, 42.0),
+        (350.0, -255.0, 38.0),
+        (-340.0, 255.0, 40.0),
+        (360.0, 250.0, 44.0),
+        (-455.0, 40.0, 36.0),
+        (455.0, -45.0, 36.0),
+    ] {
+        commands.spawn((
+            DespawnOnExit(GameState::Playing),
+            Sprite {
+                image: tree_image.clone(),
+                custom_size: Some(Vec2::splat(size)),
+                ..default()
+            },
+            Transform::from_xyz(x, y, 1.0),
+        ));
+    }
+
+    for (x, y) in [
+        (-122.0, -326.0),
+        (122.0, -326.0),
+        (-122.0, 326.0),
+        (122.0, 326.0),
+    ] {
+        commands.spawn((
+            DespawnOnExit(GameState::Playing),
+            Sprite {
+                image: barrier_image.clone(),
+                custom_size: Some(Vec2::new(42.0, 18.0)),
+                ..default()
+            },
+            Transform::from_xyz(x, y, 2.0),
+        ));
+    }
+}
+
+fn car_pixel_art() -> Image {
+    pixel_image(12, 18, |x, y| {
+        let tire = [22, 24, 28, 255];
+        let body = [226, 45, 48, 255];
+        let shadow = [126, 28, 34, 255];
+        let glass = [76, 172, 202, 255];
+        let light = [255, 239, 128, 255];
+        let transparent = [0, 0, 0, 0];
+
+        if ((x <= 1 || x >= 10) && (4..=14).contains(&y))
+            || ((x == 2 || x == 9) && (15..=16).contains(&y))
+        {
+            tire
+        } else if (4..=7).contains(&x) && y <= 1 {
+            light
+        } else if (3..=8).contains(&x) && (4..=7).contains(&y) {
+            glass
+        } else if (4..=7).contains(&x) && (13..=16).contains(&y) {
+            shadow
+        } else if (2..=9).contains(&x) && (1..=16).contains(&y) {
+            body
+        } else {
+            transparent
+        }
+    })
+}
+
+fn start_line_pixel_art() -> Image {
+    pixel_image(16, 3, |x, y| {
+        if (x + y) % 2 == 0 {
+            [245, 245, 232, 255]
+        } else {
+            [18, 20, 24, 255]
+        }
+    })
+}
+
+fn tree_pixel_art() -> Image {
+    pixel_image(8, 8, |x, y| {
+        let transparent = [0, 0, 0, 0];
+        let leaf_dark = [24, 96, 44, 255];
+        let leaf_light = [62, 168, 70, 255];
+        let trunk = [104, 72, 42, 255];
+
+        if (3..=4).contains(&x) && y >= 5 {
+            trunk
+        } else if (1..=6).contains(&x) && (1..=5).contains(&y) {
+            if (x + y) % 2 == 0 {
+                leaf_light
+            } else {
+                leaf_dark
+            }
+        } else if (2..=5).contains(&x) && y == 0 {
+            leaf_light
+        } else {
+            transparent
+        }
+    })
+}
+
+fn barrier_pixel_art() -> Image {
+    pixel_image(8, 4, |x, y| {
+        if (x / 2 + y) % 2 == 0 {
+            [232, 48, 50, 255]
+        } else {
+            [245, 245, 232, 255]
+        }
+    })
+}
+
+fn pixel_image(width: u32, height: u32, mut color_at: impl FnMut(u32, u32) -> [u8; 4]) -> Image {
+    let mut data = Vec::with_capacity((width * height * 4) as usize);
+    for y in 0..height {
+        for x in 0..width {
+            data.extend_from_slice(&color_at(x, y));
+        }
+    }
+
+    Image::new(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        data,
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    )
 }
 
 fn start_screen_input(
