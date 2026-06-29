@@ -168,6 +168,7 @@ fn setup_playing(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     track: Res<Track>,
+    mut cameras: Query<&mut Transform, With<FollowCamera>>,
 ) {
     let track_spec = track.0.sanitized();
     let inner = track_spec.inner_radii();
@@ -178,6 +179,10 @@ fn setup_playing(
     let start_line_image = images.add(start_line_pixel_art());
     let tree_image = images.add(tree_pixel_art());
     let barrier_image = images.add(barrier_pixel_art());
+
+    if let Ok(mut camera) = cameras.single_mut() {
+        camera.translation = camera_target_for(&start_state, camera.translation.z);
+    }
 
     commands.spawn((
         DespawnOnExit(GameState::Playing),
@@ -432,6 +437,9 @@ fn update_player_car(
         let recovery = track.0.recover_position(controller.state.position);
         if recovery.corrected {
             controller.state.position = recovery.position;
+            controller.state.heading_radians = track
+                .0
+                .recovery_heading(controller.state.position, controller.state.heading_radians);
             controller.state.speed *= EDGE_RECOVERY_SPEED_FACTOR;
         }
 
@@ -448,6 +456,7 @@ fn restart_session(
     track: Res<Track>,
     mut next_state: ResMut<NextState<GameState>>,
     mut cars: Query<(&mut Transform, &mut CarController), With<PlayerCar>>,
+    mut cameras: Query<&mut Transform, (With<FollowCamera>, Without<PlayerCar>)>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
         next_state.set(GameState::Start);
@@ -465,6 +474,10 @@ fn restart_session(
         transform.translation.y = start_state.position.y;
         transform.rotation = Quat::from_rotation_z(-start_state.heading_radians);
     }
+
+    if let Ok(mut camera) = cameras.single_mut() {
+        camera.translation = camera_target_for(&start_state, camera.translation.z);
+    }
 }
 
 fn update_follow_camera(
@@ -479,17 +492,18 @@ fn update_follow_camera(
         return;
     };
 
-    let forward = Vec2::new(
-        controller.state.heading_radians.sin(),
-        controller.state.heading_radians.cos(),
-    );
-    let target = Vec3::new(
-        controller.state.position.x - forward.x * CAMERA_BEHIND_DISTANCE,
-        controller.state.position.y - forward.y * CAMERA_BEHIND_DISTANCE,
-        camera.translation.z,
-    );
+    let target = camera_target_for(&controller.state, camera.translation.z);
 
     camera
         .translation
         .smooth_nudge(&target, CAMERA_FOLLOW_DECAY, time.delta_secs());
+}
+
+fn camera_target_for(state: &CarState, z: f32) -> Vec3 {
+    let forward = Vec2::new(state.heading_radians.sin(), state.heading_radians.cos());
+    Vec3::new(
+        state.position.x - forward.x * CAMERA_BEHIND_DISTANCE,
+        state.position.y - forward.y * CAMERA_BEHIND_DISTANCE,
+        z,
+    )
 }

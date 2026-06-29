@@ -11,6 +11,8 @@ use crate::driving::{CarState, Vec2};
 const MIN_RADIUS: f32 = 32.0;
 const MIN_HALF_WIDTH: f32 = 12.0;
 const CENTER_EPSILON: f32 = 0.0001;
+const CENTER_RECOVERY_RADIUS: f32 = 0.25;
+const TANGENT_FLIP_DOT_EPSILON: f32 = 0.001;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TrackSpec {
@@ -91,28 +93,53 @@ impl TrackSpec {
         if radius.is_finite() && (inner..=outer).contains(&radius) {
             return TrackRecovery {
                 position,
+                heading_radians: None,
                 corrected: false,
             };
         }
 
-        if !radius.is_finite() || radius <= CENTER_EPSILON {
+        if !radius.is_finite()
+            || radius <= CENTER_EPSILON
+            || radius < inner * CENTER_RECOVERY_RADIUS
+        {
             return TrackRecovery {
                 position: spec.start_position(),
+                heading_radians: Some(FRAC_PI_2),
                 corrected: true,
             };
         }
 
         let target_radius = radius.clamp(inner, outer);
         let scale = target_radius / radius;
+        let position = Vec2::new(position.x * scale, position.y * scale);
 
         TrackRecovery {
-            position: Vec2::new(position.x * scale, position.y * scale),
+            position,
+            heading_radians: Some(spec.recovery_heading(position, 0.0)),
             corrected: true,
         }
     }
 
     pub fn contains(self, position: Vec2) -> bool {
         !self.recover_position(position).corrected
+    }
+
+    pub fn recovery_heading(self, position: Vec2, current_heading: f32) -> f32 {
+        let spec = self.sanitized();
+        let angle = (position.y / spec.center_radius_y).atan2(position.x / spec.center_radius_x);
+        let tangent = Vec2::new(
+            -spec.center_radius_x * angle.sin(),
+            spec.center_radius_y * angle.cos(),
+        );
+        let current_forward = Vec2::new(current_heading.sin(), current_heading.cos());
+        let dot = tangent.x * current_forward.x + tangent.y * current_forward.y;
+        let tangent = if dot < -TANGENT_FLIP_DOT_EPSILON {
+            Vec2::new(-tangent.x, -tangent.y)
+        } else {
+            tangent
+        };
+
+        tangent.x.atan2(tangent.y)
     }
 
     fn normalized_radius(self, position: Vec2) -> f32 {
@@ -132,6 +159,7 @@ impl TrackSpec {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TrackRecovery {
     pub position: Vec2,
+    pub heading_radians: Option<f32>,
     pub corrected: bool,
 }
 
@@ -164,6 +192,7 @@ mod tests {
         let recovery = track.recover_position(position);
 
         assert_eq!(recovery.position, position);
+        assert_eq!(recovery.heading_radians, None);
         assert!(!recovery.corrected);
     }
 
@@ -176,6 +205,7 @@ mod tests {
 
         assert!(recovery.corrected);
         assert!(track.contains(recovery.position));
+        assert!(recovery.heading_radians.is_some());
         assert!(recovery.position.y > position.y);
     }
 
@@ -187,7 +217,29 @@ mod tests {
 
         assert!(recovery.corrected);
         assert!(track.contains(recovery.position));
+        assert_eq!(recovery.heading_radians, Some(FRAC_PI_2));
         assert!(recovery.position.y < 0.0);
+    }
+
+    #[test]
+    fn near_center_recovery_uses_safe_start_instead_of_huge_scale() {
+        let track = TrackSpec::default();
+
+        let recovery = track.recover_position(Vec2::new(0.01, 0.0));
+
+        assert!(recovery.corrected);
+        assert_eq!(recovery.position, track.start_position());
+        assert_eq!(recovery.heading_radians, Some(FRAC_PI_2));
+    }
+
+    #[test]
+    fn recovery_heading_follows_track_tangent_nearest_current_direction() {
+        let track = TrackSpec::default();
+        let position = track.start_position();
+
+        let heading = track.recovery_heading(position, 0.0);
+
+        assert!((heading - FRAC_PI_2).abs() < 1e-5);
     }
 
     #[test]
