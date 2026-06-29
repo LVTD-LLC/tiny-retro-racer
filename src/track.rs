@@ -10,7 +10,6 @@ use crate::driving::{CarState, Vec2};
 
 const MIN_RADIUS: f32 = 32.0;
 const MIN_HALF_WIDTH: f32 = 12.0;
-const CENTER_EPSILON: f32 = 0.0001;
 const TANGENT_FLIP_DOT_EPSILON: f32 = 0.001;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -109,10 +108,7 @@ impl TrackSpec {
             };
         }
 
-        if !radius.is_finite() || radius <= CENTER_EPSILON {
-            // At the exact center there is no stable radial direction to clamp
-            // along, so use the known safe start pose. Reachable center grass
-            // with a direction falls through and clamps to the nearest edge.
+        if !radius.is_finite() {
             return TrackRecovery {
                 position: spec.start_position(),
                 heading_radians: Some(FRAC_PI_2),
@@ -120,9 +116,13 @@ impl TrackSpec {
             };
         }
 
-        let target_radius = radius.clamp(inner, outer);
-        let scale = target_radius / radius;
-        let position = Vec2::new(position.x * scale, position.y * scale);
+        let position = if radius == 0.0 {
+            Vec2::new(0.0, -spec.center_radius_y * inner)
+        } else {
+            let target_radius = radius.clamp(inner, outer);
+            let scale = target_radius / radius;
+            Vec2::new(position.x * scale, position.y * scale)
+        };
 
         TrackRecovery {
             position,
@@ -234,19 +234,34 @@ mod tests {
 
         assert!(recovery.corrected);
         assert!(track.contains(recovery.position));
-        assert_eq!(recovery.heading_radians, Some(FRAC_PI_2));
+        assert_eq!(recovery.heading_radians, None);
         assert!(recovery.position.y < 0.0);
     }
 
     #[test]
-    fn exact_center_recovery_uses_safe_start_without_direction() {
+    fn exact_center_recovery_uses_inner_edge_without_forced_heading() {
         let track = TrackSpec::default();
 
         let recovery = track.recover_position(Vec2::ZERO);
 
         assert!(recovery.corrected);
-        assert_eq!(recovery.position, track.start_position());
-        assert_eq!(recovery.heading_radians, Some(FRAC_PI_2));
+        assert_eq!(recovery.position, Vec2::new(0.0, -track.inner_radii().y));
+        assert_eq!(recovery.heading_radians, None);
+    }
+
+    #[test]
+    fn tiny_center_offset_recovers_locally_instead_of_to_start_line() {
+        let track = TrackSpec::default();
+        let position = Vec2::new(0.02, 0.0);
+
+        let recovery = track.recover_position(position);
+
+        assert!(recovery.corrected);
+        assert!(track.contains(recovery.position));
+        assert_eq!(recovery.heading_radians, None);
+        assert_ne!(recovery.position, track.start_position());
+        assert!(recovery.position.x > position.x);
+        assert_eq!(recovery.position.y, 0.0);
     }
 
     #[test]
