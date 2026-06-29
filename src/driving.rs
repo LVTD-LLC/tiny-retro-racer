@@ -54,6 +54,17 @@ impl DrivingTuning {
     pub fn sanitized(self) -> Self {
         let fallback = Self::default();
         let max_speed = finite_positive(self.max_speed, fallback.max_speed);
+        let boundary_min_forward_speed = finite_non_negative(
+            self.boundary_min_forward_speed,
+            fallback.boundary_min_forward_speed,
+        )
+        .min(max_speed);
+        let boundary_accelerate_nudge_speed = finite_non_negative(
+            self.boundary_accelerate_nudge_speed,
+            fallback.boundary_accelerate_nudge_speed,
+        )
+        .min(max_speed)
+        .min(boundary_min_forward_speed);
 
         Self {
             acceleration: finite_non_negative(self.acceleration, fallback.acceleration),
@@ -69,16 +80,8 @@ impl DrivingTuning {
                 fallback.boundary_speed_retention,
             )
             .clamp(0.0, 1.0),
-            boundary_min_forward_speed: finite_non_negative(
-                self.boundary_min_forward_speed,
-                fallback.boundary_min_forward_speed,
-            )
-            .min(max_speed),
-            boundary_accelerate_nudge_speed: finite_non_negative(
-                self.boundary_accelerate_nudge_speed,
-                fallback.boundary_accelerate_nudge_speed,
-            )
-            .min(max_speed),
+            boundary_min_forward_speed,
+            boundary_accelerate_nudge_speed,
         }
     }
 }
@@ -388,6 +391,25 @@ mod tests {
         assert_eq!(recovered_boundary_speed(-20.0, input, tuning), 70.0);
         assert_eq!(recovered_boundary_speed(0.0, input, tuning), 70.0);
         assert_eq!(recovered_boundary_speed(5.0, input, tuning), 70.0);
+    }
+
+    #[test]
+    fn recovery_nudge_cannot_exceed_min_forward_speed_after_sanitizing() {
+        let tuning = DrivingTuning {
+            boundary_min_forward_speed: 40.0,
+            boundary_accelerate_nudge_speed: 120.0,
+            ..DrivingTuning::default()
+        };
+        let input = DriverInput {
+            accelerate: true,
+            ..DriverInput::default()
+        };
+
+        let sanitized = tuning.sanitized();
+
+        assert_eq!(sanitized.boundary_min_forward_speed, 40.0);
+        assert_eq!(sanitized.boundary_accelerate_nudge_speed, 40.0);
+        assert_eq!(recovered_boundary_speed(5.0, input, tuning), 40.0);
     }
 
     #[test]
