@@ -1,0 +1,11 @@
+# Changelog
+
+## Unreleased
+
+- Added `Cargo.toml`, `Cargo.lock`, and Rust/Bevy source layout for the initial Tiny Retro Racer app shell.
+- Set the language and engine baseline to Rust 2024 edition, latest stable Rust via `rust-toolchain.toml`, and Bevy `0.19.0`.
+- Added `src/driving.rs` with test-covered acceleration, braking, steering, speed limits, tuning sanitization, frame-delta clamping, and tiny-speed snap-to-zero behavior.
+- Added `src/main.rs` with a placeholder Bevy scene, camera, road sprites, player car, keyboard input mapping, and road-boundary clamping.
+- Added `.github/workflows/ci.yml` for format, test, clippy, and cargo check on pull requests.
+- Added `.github/workflows/reviewgate.yml` with pinned ReviewGate review enforcement.
+- Added `README.md`, `docs/game-design.md`, and `docs/research-notes.md` for MVP scope, controls, risks, and distribution notes.
