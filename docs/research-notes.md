@@ -2,7 +2,9 @@
 
 ## Bevy Baseline
 
-Bevy 0.19 was announced on June 19, 2026. The project starts on `bevy = "0.19"` so we are not beginning on an already-stale API. Because Bevy still releases breaking changes regularly, gameplay logic should stay decoupled from engine-specific systems where it is cheap to do so.
+Bevy 0.19 was announced on June 19, 2026. The project starts on `bevy = "0.19.0"` so we are not beginning on an already-stale API. Because Bevy still releases breaking changes regularly, gameplay logic should stay decoupled from engine-specific systems where it is cheap to do so.
+
+The Rust baseline is current stable with Rust 2024 edition. The repo includes `rust-toolchain.toml` with `channel = "stable"` so local development and CI stay on the latest stable toolchain rather than an old pinned compiler.
 
 Useful references:
 
@@ -28,4 +30,3 @@ Steam distribution is possible for a small Rust game, but it is not a first-PR t
 - Linux build path for Steam Deck verification.
 - Controller input once keyboard driving works.
 - Store assets, age-appropriate page copy, and privacy/support links.
-
