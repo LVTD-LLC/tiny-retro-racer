@@ -5,7 +5,7 @@ const ROAD_WIDTH: f32 = 420.0;
 const ROAD_LENGTH: f32 = 720.0;
 const CAR_WIDTH: f32 = 38.0;
 const CAR_LENGTH: f32 = 66.0;
-const CAR_START_Y: f32 = -220.0;
+const INITIAL_CAR_Y: f32 = -220.0;
 
 #[derive(Component)]
 struct PlayerCar;
@@ -62,10 +62,13 @@ fn setup(mut commands: Commands) {
             Color::srgb(0.92, 0.18, 0.2),
             Vec2::new(CAR_WIDTH, CAR_LENGTH),
         ),
-        Transform::from_xyz(0.0, CAR_START_Y, 2.0),
+        Transform::from_xyz(0.0, INITIAL_CAR_Y, 2.0),
         PlayerCar,
         CarController {
-            state: CarState::default(),
+            state: CarState {
+                position: tiny_retro_racer::driving::Vec2::new(0.0, INITIAL_CAR_Y),
+                ..CarState::default()
+            },
         },
     ));
 }
@@ -95,13 +98,14 @@ fn update_player_car(
             .position
             .x
             .clamp(-safe_half_width, safe_half_width);
-        controller.state.position.y = controller.state.position.y.clamp(
-            -safe_half_length - CAR_START_Y,
-            safe_half_length - CAR_START_Y,
-        );
+        controller.state.position.y = controller
+            .state
+            .position
+            .y
+            .clamp(-safe_half_length, safe_half_length);
 
         transform.translation.x = controller.state.position.x;
-        transform.translation.y = CAR_START_Y + controller.state.position.y;
+        transform.translation.y = controller.state.position.y;
         transform.rotation = Quat::from_rotation_z(-controller.state.heading_radians);
     }
 }

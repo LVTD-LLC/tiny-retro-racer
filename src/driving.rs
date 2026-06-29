@@ -1,3 +1,4 @@
+/// Minimal vector type that keeps the driving model free of Bevy/glam dependencies.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vec2 {
     pub x: f32,
@@ -121,7 +122,11 @@ fn steering_axis(input: DriverInput) -> f32 {
 }
 
 fn finite(value: f32, fallback: f32) -> f32 {
-    if value.is_finite() { value } else { fallback }
+    if value.is_finite() {
+        value
+    } else {
+        fallback
+    }
 }
 
 fn finite_non_negative(value: f32, fallback: f32) -> f32 {
@@ -130,7 +135,11 @@ fn finite_non_negative(value: f32, fallback: f32) -> f32 {
 
 fn finite_positive(value: f32, fallback: f32) -> f32 {
     let value = finite(value, fallback);
-    if value > 0.0 { value } else { fallback }
+    if value > 0.0 {
+        value
+    } else {
+        fallback
+    }
 }
 
 #[cfg(test)]

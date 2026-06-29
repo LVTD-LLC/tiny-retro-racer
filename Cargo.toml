@@ -1,8 +1,7 @@
 [package]
 name = "tiny-retro-racer"
 version = "0.1.0"
-edition = "2024"
-rust-version = "1.96"
+edition = "2021"
 license = "MIT"
 description = "A kid-friendly retro arcade racing game built with Rust and Bevy."
 
@@ -18,4 +17,3 @@ opt-level = 3
 [profile.release]
 codegen-units = 1
 lto = "thin"
-
