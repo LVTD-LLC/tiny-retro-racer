@@ -51,6 +51,24 @@ The first playable slice now answers the next risk with an oval circuit:
 - Can the car stay recoverable on a closed circuit without a crash/fail state?
 - Can the camera show the car from behind/above without flipping or hiding the road ahead?
 
+## Kid-Friendly Driving Model
+
+Player model: the target player may hold `Up Arrow`, oversteer, reverse by accident, and ignore precise racing lines. The desired promise is that simple inputs make the car feel fast, readable, and successful without demanding recovery skill.
+
+Mechanic brief: the core loop is hold accelerate, steer around the oval, see the road and car react immediately, and get gently corrected when crossing a boundary. There is no crash, fail, or blocked state in the MVP.
+
+Central tuning knobs:
+
+- `DrivingTuning` owns acceleration, braking, drag, maximum forward speed, reverse limit, turn rate, and boundary recovery speed behavior.
+- `TrackSpec` owns the oval radii and half-width. The default half-width is intentionally wide for low-precision steering.
+- `TrackSpec::recover_car_state_with_margin` owns boundary recovery for position, tangent heading, and speed together, using the car footprint margin supplied by the Bevy layer.
+
+Current feel targets:
+
+- Acceleration should respond quickly without reaching an unreadable top speed.
+- Braking should stop the car fast and allow only a tiny, gentle reverse.
+- Boundary contact should preserve forward movement for fast hits, stop accidental reverse hits, and nudge the car forward when the player is holding accelerate into an edge.
+
 ## Build Notes
 
 - Keep car movement tuning centralized.

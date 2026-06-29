@@ -3,7 +3,7 @@ use bevy::{
     prelude::*,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
-use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning, recovered_boundary_speed};
+use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning};
 use tiny_retro_racer::pixel_art::{self, PixelArt};
 use tiny_retro_racer::track::TrackSpec;
 
@@ -13,8 +13,6 @@ const CAR_FOOTPRINT_PADDING: f32 = 2.0;
 const CAMERA_FOLLOW_DECAY: f32 = 4.0;
 const CAMERA_BEHIND_DISTANCE: f32 = 120.0;
 const CAMERA_MAX_DELTA_SECONDS: f32 = 1.0 / 20.0;
-const EDGE_RECOVERY_SPEED_RETENTION: f32 = 0.92;
-const RECOVERY_MIN_FORWARD_SPEED: f32 = 90.0;
 const PLAY_FIELD_SIZE: f32 = 980.0;
 
 const START_BUTTON_NORMAL: Color = Color::srgb(0.16, 0.22, 0.28);
@@ -376,24 +374,15 @@ fn update_player_car(
         steer_left: keyboard.pressed(KeyCode::ArrowLeft),
         steer_right: keyboard.pressed(KeyCode::ArrowRight),
     };
-    let footprint_safe_track = track.0.with_margin(car_footprint_margin());
+    let footprint_margin = car_footprint_margin();
 
     for (mut transform, mut controller) in &mut cars {
         controller.state.step(input, tuning.0, time.delta_secs());
 
-        let recovery = footprint_safe_track.recover_position(controller.state.position);
-        if recovery.corrected {
-            controller.state.position = recovery.position;
-            controller.state.heading_radians = recovery.heading_radians.unwrap_or_else(|| {
-                footprint_safe_track
-                    .recovery_heading(controller.state.position, controller.state.heading_radians)
-            });
-            controller.state.speed = recovered_boundary_speed(
-                controller.state.speed,
-                EDGE_RECOVERY_SPEED_RETENTION,
-                RECOVERY_MIN_FORWARD_SPEED,
-            );
-        }
+        controller.state = track
+            .0
+            .recover_car_state_with_margin(controller.state, input, tuning.0, footprint_margin)
+            .state;
 
         transform.translation.x = controller.state.position.x;
         transform.translation.y = controller.state.position.y;
