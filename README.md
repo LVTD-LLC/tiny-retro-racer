@@ -6,10 +6,13 @@ The project intentionally tracks current stable Rust and current Bevy APIs. It s
 
 ## Controls
 
+- `Enter` / `Space`: start from the title screen
 - `Up Arrow`: accelerate
 - `Left Arrow`: steer left
 - `Right Arrow`: steer right
 - `Down Arrow`: brake
+- `R`: reset the car during play
+- `Esc`: return to the title screen
 
 ## Local Development
 
@@ -31,6 +34,13 @@ cargo check --bin tiny-retro-racer
 ## First Playable Goal
 
 The first playable version should open on a start screen, launch one controllable car on one circuit, and keep the player recoverable at all times. macOS and Windows builds are the first desktop priorities. Steam and Steam Deck support should stay visible in release planning, but no public store action should happen without Rasul's approval.
+
+Current first-playable baseline:
+
+- Start screen with button, `Enter`, and `Space` start paths.
+- Single controllable car on a closed oval placeholder circuit.
+- Track recovery clamps the car back onto the road instead of failing or getting stuck.
+- Smooth follow camera offsets behind the car so more road ahead remains visible.
 
 ## Project Links
 

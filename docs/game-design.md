@@ -45,9 +45,18 @@ The first implementation slice should answer two questions:
 
 Success for the initial skeleton is a compiling Bevy app plus unit-tested acceleration, braking, steering, and speed clamps. The next slice should turn the placeholder scene into a real start screen and gameplay state.
 
+The first playable slice now answers the next risk with an oval circuit:
+
+- Can a 4-year-old start the game with one clear action?
+- Can the car stay recoverable on a closed circuit without a crash/fail state?
+- Can the camera show the car from behind/above without flipping or hiding the road ahead?
+
 ## Build Notes
 
 - Keep car movement tuning centralized.
 - Prefer gentle correction and recovery over failure states.
 - Separate pure gameplay math from Bevy systems where practical. The initial driving model uses a tiny local `Vec2` to avoid pulling Bevy/glam into library tests; switch to `glam` if the math surface grows beyond simple position storage.
+- Represent the first circuit as a simple elliptical road band. The pure track model owns containment/recovery; the Bevy mesh only visualizes it.
+- Run driving simulation in a fixed timestep. Keep the camera in frame updates so it can smooth toward the car every rendered frame.
+- Keep the MVP camera in 2D with a behind-car offset rather than full 3D. This preserves the old-arcade above/behind feel with much lower tuning and asset cost; revisit a true 3D camera only after the driving loop proves fun.
 - Keep visual placeholders intentionally simple until the driving loop feels right.
