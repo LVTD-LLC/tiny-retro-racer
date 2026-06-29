@@ -67,6 +67,10 @@ impl TrackSpec {
         }
     }
 
+    pub fn recover_position_with_margin(self, position: Vec2, margin: f32) -> TrackRecovery {
+        self.with_margin(margin).recover_position(position)
+    }
+
     pub fn inner_scale(self) -> f32 {
         (1.0 - self.band_half_scale()).max(0.1)
     }
@@ -130,6 +134,12 @@ impl TrackSpec {
 
     pub fn contains(self, position: Vec2) -> bool {
         !self.recover_position(position).corrected
+    }
+
+    pub fn contains_with_margin(self, position: Vec2, margin: f32) -> bool {
+        !self
+            .recover_position_with_margin(position, margin)
+            .corrected
     }
 
     pub fn recovery_heading(self, position: Vec2, current_heading: f32) -> f32 {
@@ -260,7 +270,22 @@ mod tests {
 
         assert!(safe_outer.x < original_outer.x);
         assert!(safe_outer.y < original_outer.y);
-        assert!(track.with_margin(margin).contains(track.start_position()));
+        assert!(track.contains_with_margin(track.start_position(), margin));
+    }
+
+    #[test]
+    fn margin_recovery_keeps_footprint_center_inside_safe_band() {
+        let track = TrackSpec::default();
+        let margin = 40.0;
+        let original_outer = track.outer_radii();
+        let boundary_center = Vec2::new(0.0, -original_outer.y);
+
+        let recovery = track.recover_position_with_margin(boundary_center, margin);
+
+        assert!(recovery.corrected);
+        assert!(track.contains(recovery.position));
+        assert!(track.contains_with_margin(recovery.position, margin));
+        assert!(recovery.position.y > boundary_center.y);
     }
 
     #[test]

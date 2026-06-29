@@ -8,9 +8,9 @@ use tiny_retro_racer::track::TrackSpec;
 
 const CAR_WIDTH: f32 = 38.0;
 const CAR_LENGTH: f32 = 66.0;
+const CAR_FOOTPRINT_PADDING: f32 = 2.0;
 const CAMERA_FOLLOW_DECAY: f32 = 4.0;
 const CAMERA_BEHIND_DISTANCE: f32 = 120.0;
-const CAR_BOUNDARY_MARGIN: f32 = 40.0;
 const EDGE_RECOVERY_SPEED_RETENTION: f32 = 0.92;
 const RECOVERY_MIN_FORWARD_SPEED: f32 = 90.0;
 const PLAY_FIELD_SIZE: f32 = 980.0;
@@ -436,10 +436,13 @@ fn update_player_car(
             .state
             .step(input, tuning.0, time.delta_secs().min(1.0 / 20.0));
 
-        let safe_track = track.0.with_margin(CAR_BOUNDARY_MARGIN);
-        let recovery = safe_track.recover_position(controller.state.position);
+        let footprint_margin = car_footprint_margin();
+        let recovery = track
+            .0
+            .recover_position_with_margin(controller.state.position, footprint_margin);
         if recovery.corrected {
             controller.state.position = recovery.position;
+            let safe_track = track.0.with_margin(footprint_margin);
             controller.state.heading_radians = safe_track
                 .recovery_heading(controller.state.position, controller.state.heading_radians);
             controller.state.speed = recovered_speed(controller.state.speed);
@@ -508,6 +511,10 @@ fn camera_target_for(state: &CarState, z: f32) -> Vec3 {
         state.position.y - forward.y * CAMERA_BEHIND_DISTANCE,
         z,
     )
+}
+
+fn car_footprint_margin() -> f32 {
+    (CAR_WIDTH * 0.5).hypot(CAR_LENGTH * 0.5) + CAR_FOOTPRINT_PADDING
 }
 
 fn recovered_speed(speed: f32) -> f32 {
