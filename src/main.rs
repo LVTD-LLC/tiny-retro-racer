@@ -330,7 +330,7 @@ fn pixel_image(art: PixelArt) -> Image {
         TextureDimension::D2,
         data,
         TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::default(),
+        RenderAssetUsages::RENDER_WORLD,
     )
 }
 
@@ -365,7 +365,7 @@ fn start_screen_input(
 
 fn update_player_car(
     keyboard: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
+    time: Res<Time<Fixed>>,
     tuning: Res<Tuning>,
     track: Res<Track>,
     mut cars: Query<(&mut Transform, &mut CarController), With<PlayerCar>>,
@@ -376,13 +376,11 @@ fn update_player_car(
         steer_left: keyboard.pressed(KeyCode::ArrowLeft),
         steer_right: keyboard.pressed(KeyCode::ArrowRight),
     };
+    let footprint_safe_track = track.0.with_margin(car_footprint_margin());
 
     for (mut transform, mut controller) in &mut cars {
-        controller
-            .state
-            .step(input, tuning.0, time.delta_secs().min(1.0 / 20.0));
+        controller.state.step(input, tuning.0, time.delta_secs());
 
-        let footprint_safe_track = track.0.with_margin(car_footprint_margin());
         let recovery = footprint_safe_track.recover_position(controller.state.position);
         if recovery.corrected {
             controller.state.position = recovery.position;
