@@ -28,6 +28,9 @@ struct PlayerCar;
 struct FollowCamera;
 
 #[derive(Component)]
+struct GameplayEntity;
+
+#[derive(Component)]
 struct StartButton;
 
 type StartButtonInteractions<'w, 's> = Query<
@@ -82,6 +85,7 @@ fn main() {
             start_screen_input.run_if(in_state(GameState::Start)),
         )
         .add_systems(OnEnter(GameState::Playing), setup_playing)
+        .add_systems(OnExit(GameState::Playing), cleanup_gameplay_entities)
         .add_systems(
             FixedUpdate,
             update_player_car.run_if(in_state(GameState::Playing)),
@@ -189,14 +193,14 @@ fn setup_playing(
     }
 
     commands.spawn((
-        DespawnOnExit(GameState::Playing),
+        GameplayEntity,
         Mesh2d(meshes.add(Rectangle::new(PLAY_FIELD_SIZE, PLAY_FIELD_SIZE))),
         MeshMaterial2d(materials.add(Color::srgb(0.08, 0.42, 0.18))),
         Transform::from_xyz(0.0, 0.0, -2.0),
     ));
 
     commands.spawn((
-        DespawnOnExit(GameState::Playing),
+        GameplayEntity,
         Mesh2d(meshes.add(Ring::new(
             Ellipse::new(outer.x, outer.y),
             Ellipse::new(inner.x, inner.y),
@@ -206,7 +210,7 @@ fn setup_playing(
     ));
 
     commands.spawn((
-        DespawnOnExit(GameState::Playing),
+        GameplayEntity,
         Mesh2d(meshes.add(Ring::new(
             Ellipse::new(center.x * 1.015, center.y * 1.015),
             Ellipse::new(center.x * 0.985, center.y * 0.985),
@@ -216,7 +220,7 @@ fn setup_playing(
     ));
 
     commands.spawn((
-        DespawnOnExit(GameState::Playing),
+        GameplayEntity,
         Sprite {
             image: start_line_image,
             custom_size: Some(Vec2::new(112.0, 16.0)),
@@ -228,7 +232,7 @@ fn setup_playing(
     spawn_pixel_scenery(&mut commands, tree_image, barrier_image);
 
     commands.spawn((
-        DespawnOnExit(GameState::Playing),
+        GameplayEntity,
         Sprite {
             image: car_image,
             custom_size: Some(Vec2::new(CAR_WIDTH, CAR_LENGTH)),
@@ -241,7 +245,7 @@ fn setup_playing(
     ));
 
     commands.spawn((
-        DespawnOnExit(GameState::Playing),
+        GameplayEntity,
         Text::new("Arrow keys drive | R reset | Esc start screen"),
         TextFont {
             font_size: FontSize::Px(18.0),
@@ -257,11 +261,24 @@ fn setup_playing(
     ));
 }
 
+fn cleanup_gameplay_entities(
+    mut commands: Commands,
+    entities: Query<Entity, With<GameplayEntity>>,
+) {
+    // OnExit runs before the next state's OnEnter systems, so old track,
+    // scenery, HUD, and car entities are gone before a later Play rebuild.
+    for entity in &entities {
+        commands.entity(entity).despawn();
+    }
+}
+
 fn spawn_pixel_scenery(
     commands: &mut Commands,
     tree_image: Handle<Image>,
     barrier_image: Handle<Image>,
 ) {
+    // These sit outside the default oval's outer radii and inside the 980px
+    // grass field, so scenery decorates only the grass around the road.
     for (x, y, size) in [
         (-360.0, -245.0, 42.0),
         (350.0, -255.0, 38.0),
@@ -271,7 +288,7 @@ fn spawn_pixel_scenery(
         (455.0, -45.0, 36.0),
     ] {
         commands.spawn((
-            DespawnOnExit(GameState::Playing),
+            GameplayEntity,
             Sprite {
                 image: tree_image.clone(),
                 custom_size: Some(Vec2::splat(size)),
@@ -288,7 +305,7 @@ fn spawn_pixel_scenery(
         (122.0, 326.0),
     ] {
         commands.spawn((
-            DespawnOnExit(GameState::Playing),
+            GameplayEntity,
             Sprite {
                 image: barrier_image.clone(),
                 custom_size: Some(Vec2::new(42.0, 18.0)),

@@ -202,6 +202,30 @@ mod tests {
     }
 
     #[test]
+    fn releasing_both_steering_inputs_keeps_heading_neutral() {
+        let tuning = DrivingTuning::default();
+        let mut car = CarState {
+            speed: 200.0,
+            ..CarState::default()
+        };
+
+        car.step(
+            DriverInput {
+                steer_left: true,
+                steer_right: true,
+                ..DriverInput::default()
+            },
+            tuning,
+            1.0 / 60.0,
+        );
+        let heading_after_cancelled_input = car.heading_radians;
+
+        car.step(DriverInput::default(), tuning, 1.0 / 60.0);
+
+        assert_eq!(car.heading_radians, heading_after_cancelled_input);
+    }
+
+    #[test]
     fn left_steering_moves_toward_negative_x() {
         let tuning = DrivingTuning::default();
         let mut car = CarState {

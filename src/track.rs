@@ -110,6 +110,9 @@ impl TrackSpec {
         }
 
         if !radius.is_finite() || radius <= CENTER_EPSILON {
+            // At the exact center there is no stable radial direction to clamp
+            // along, so use the known safe start pose. Reachable center grass
+            // with a direction falls through and clamps to the nearest edge.
             return TrackRecovery {
                 position: spec.start_position(),
                 heading_radians: Some(FRAC_PI_2),
