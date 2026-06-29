@@ -133,6 +133,21 @@ fn steering_axis(input: DriverInput) -> f32 {
     }
 }
 
+pub fn recovered_boundary_speed(speed: f32, retention: f32, min_forward_speed: f32) -> f32 {
+    if speed <= 0.0 {
+        return 0.0;
+    }
+
+    let retention = finite(retention, 1.0).clamp(0.0, 1.0);
+    let min_forward_speed = finite_non_negative(min_forward_speed, 0.0);
+
+    if speed <= min_forward_speed {
+        return speed;
+    }
+
+    (speed * retention).max(min_forward_speed).min(speed)
+}
+
 fn finite(value: f32, fallback: f32) -> f32 {
     if value.is_finite() { value } else { fallback }
 }
@@ -202,6 +217,30 @@ mod tests {
     }
 
     #[test]
+    fn releasing_both_steering_inputs_keeps_heading_neutral() {
+        let tuning = DrivingTuning::default();
+        let mut car = CarState {
+            speed: 200.0,
+            ..CarState::default()
+        };
+
+        car.step(
+            DriverInput {
+                steer_left: true,
+                steer_right: true,
+                ..DriverInput::default()
+            },
+            tuning,
+            1.0 / 60.0,
+        );
+        let heading_after_cancelled_input = car.heading_radians;
+
+        car.step(DriverInput::default(), tuning, 1.0 / 60.0);
+
+        assert_eq!(car.heading_radians, heading_after_cancelled_input);
+    }
+
+    #[test]
     fn left_steering_moves_toward_negative_x() {
         let tuning = DrivingTuning::default();
         let mut car = CarState {
@@ -242,6 +281,24 @@ mod tests {
         assert!(car.heading_radians.is_finite());
         assert!(car.position.x.is_finite());
         assert!(car.position.y.is_finite());
+    }
+
+    #[test]
+    fn recovery_speed_never_accelerates_slow_boundary_contacts() {
+        assert_eq!(recovered_boundary_speed(5.0, 0.92, 90.0), 5.0);
+        assert_eq!(recovered_boundary_speed(90.0, 0.92, 90.0), 90.0);
+    }
+
+    #[test]
+    fn recovery_speed_retains_floor_for_fast_boundary_contacts() {
+        assert_eq!(recovered_boundary_speed(200.0, 0.92, 90.0), 184.0);
+        assert_eq!(recovered_boundary_speed(92.0, 0.92, 90.0), 90.0);
+    }
+
+    #[test]
+    fn recovery_speed_stops_reverse_boundary_contacts() {
+        assert_eq!(recovered_boundary_speed(-20.0, 0.92, 90.0), 0.0);
+        assert_eq!(recovered_boundary_speed(0.0, 0.92, 90.0), 0.0);
     }
 
     #[test]
