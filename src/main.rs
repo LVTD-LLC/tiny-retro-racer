@@ -365,14 +365,11 @@ fn update_player_car(
             .state
             .step(input, tuning.0, time.delta_secs().min(1.0 / 20.0));
 
-        let footprint_margin = car_footprint_margin();
-        let recovery = track
-            .0
-            .recover_position_with_margin(controller.state.position, footprint_margin);
+        let footprint_safe_track = track.0.with_margin(car_footprint_margin());
+        let recovery = footprint_safe_track.recover_position(controller.state.position);
         if recovery.corrected {
             controller.state.position = recovery.position;
-            let safe_track = track.0.with_margin(footprint_margin);
-            controller.state.heading_radians = safe_track
+            controller.state.heading_radians = footprint_safe_track
                 .recovery_heading(controller.state.position, controller.state.heading_radians);
             controller.state.speed = recovered_speed(controller.state.speed);
         }

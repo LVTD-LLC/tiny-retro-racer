@@ -127,7 +127,7 @@ impl TrackSpec {
 
         TrackRecovery {
             position,
-            heading_radians: Some(spec.recovery_heading(position, 0.0)),
+            heading_radians: None,
             corrected: true,
         }
     }
@@ -223,7 +223,7 @@ mod tests {
 
         assert!(recovery.corrected);
         assert!(track.contains(recovery.position));
-        assert!(recovery.heading_radians.is_some());
+        assert_eq!(recovery.heading_radians, None);
         assert!(recovery.position.y > position.y);
     }
 
