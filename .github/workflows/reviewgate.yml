@@ -19,10 +19,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Skip ReviewGate when OpenRouter is not configured
+        if: ${{ env.OPENROUTER_API_KEY == '' }}
+        run: echo "OPENROUTER_API_KEY is not configured; skipping ReviewGate."
+
       - name: ReviewGate
+        if: ${{ env.OPENROUTER_API_KEY != '' }}
         uses: LVTD-LLC/reviewgate@v0
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         with:
           preset: balanced
           gate_mode: report
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
