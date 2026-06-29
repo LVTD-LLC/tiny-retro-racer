@@ -4,6 +4,7 @@ use bevy::{
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
 use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning};
+use tiny_retro_racer::pixel_art::{self, PixelArt};
 use tiny_retro_racer::track::TrackSpec;
 
 const CAR_WIDTH: f32 = 38.0;
@@ -11,6 +12,7 @@ const CAR_LENGTH: f32 = 66.0;
 const CAR_FOOTPRINT_PADDING: f32 = 2.0;
 const CAMERA_FOLLOW_DECAY: f32 = 4.0;
 const CAMERA_BEHIND_DISTANCE: f32 = 120.0;
+const CAMERA_MAX_DELTA_SECONDS: f32 = 1.0 / 20.0;
 const EDGE_RECOVERY_SPEED_RETENTION: f32 = 0.92;
 const RECOVERY_MIN_FORWARD_SPEED: f32 = 90.0;
 const PLAY_FIELD_SIZE: f32 = 980.0;
@@ -177,10 +179,10 @@ fn setup_playing(
     let outer = track_spec.outer_radii();
     let center = track_spec.center_radii();
     let start_state = track_spec.start_state();
-    let car_image = images.add(car_pixel_art());
-    let start_line_image = images.add(start_line_pixel_art());
-    let tree_image = images.add(tree_pixel_art());
-    let barrier_image = images.add(barrier_pixel_art());
+    let car_image = images.add(pixel_image(pixel_art::car()));
+    let start_line_image = images.add(pixel_image(pixel_art::start_line()));
+    let tree_image = images.add(pixel_image(pixel_art::tree()));
+    let barrier_image = images.add(pixel_image(pixel_art::barrier()));
 
     if let Ok(mut camera) = cameras.single_mut() {
         camera.translation = camera_target_for(&start_state, camera.translation.z);
@@ -297,83 +299,10 @@ fn spawn_pixel_scenery(
     }
 }
 
-fn car_pixel_art() -> Image {
-    pixel_image(12, 18, |x, y| {
-        let tire = [22, 24, 28, 255];
-        let body = [226, 45, 48, 255];
-        let shadow = [126, 28, 34, 255];
-        let glass = [76, 172, 202, 255];
-        let light = [255, 239, 128, 255];
-        let transparent = [0, 0, 0, 0];
-
-        if ((x <= 1 || x >= 10) && (4..=14).contains(&y))
-            || ((x == 2 || x == 9) && (15..=16).contains(&y))
-        {
-            tire
-        } else if (4..=7).contains(&x) && y <= 1 {
-            light
-        } else if (3..=8).contains(&x) && (4..=7).contains(&y) {
-            glass
-        } else if (4..=7).contains(&x) && (13..=16).contains(&y) {
-            shadow
-        } else if (2..=9).contains(&x) && (1..=16).contains(&y) {
-            body
-        } else {
-            transparent
-        }
-    })
-}
-
-fn start_line_pixel_art() -> Image {
-    pixel_image(16, 3, |x, y| {
-        if (x + y) % 2 == 0 {
-            [245, 245, 232, 255]
-        } else {
-            [18, 20, 24, 255]
-        }
-    })
-}
-
-fn tree_pixel_art() -> Image {
-    pixel_image(8, 8, |x, y| {
-        let transparent = [0, 0, 0, 0];
-        let leaf_dark = [24, 96, 44, 255];
-        let leaf_light = [62, 168, 70, 255];
-        let trunk = [104, 72, 42, 255];
-
-        if (3..=4).contains(&x) && y >= 5 {
-            trunk
-        } else if (1..=6).contains(&x) && (1..=5).contains(&y) {
-            if (x + y) % 2 == 0 {
-                leaf_light
-            } else {
-                leaf_dark
-            }
-        } else if (2..=5).contains(&x) && y == 0 {
-            leaf_light
-        } else {
-            transparent
-        }
-    })
-}
-
-fn barrier_pixel_art() -> Image {
-    pixel_image(8, 4, |x, y| {
-        if (x / 2 + y) % 2 == 0 {
-            [232, 48, 50, 255]
-        } else {
-            [245, 245, 232, 255]
-        }
-    })
-}
-
-fn pixel_image(width: u32, height: u32, mut color_at: impl FnMut(u32, u32) -> [u8; 4]) -> Image {
-    let mut data = Vec::with_capacity((width * height * 4) as usize);
-    for y in 0..height {
-        for x in 0..width {
-            data.extend_from_slice(&color_at(x, y));
-        }
-    }
+fn pixel_image(art: PixelArt) -> Image {
+    let width = art.width;
+    let height = art.height;
+    let data = art.into_rgba_bytes();
 
     Image::new(
         Extent3d {
@@ -498,10 +427,12 @@ fn update_follow_camera(
     };
 
     let target = camera_target_for(&controller.state, camera.translation.z);
+    let delta_seconds = time.delta_secs().clamp(0.0, CAMERA_MAX_DELTA_SECONDS);
+    // Exponential smoothing is stable across frame rates; the clamp prevents
+    // one delayed frame from snapping the camera after a stall or tab switch.
+    let blend = 1.0 - (-CAMERA_FOLLOW_DECAY * delta_seconds).exp();
 
-    camera
-        .translation
-        .smooth_nudge(&target, CAMERA_FOLLOW_DECAY, time.delta_secs());
+    camera.translation = camera.translation.lerp(target, blend);
 }
 
 fn camera_target_for(state: &CarState, z: f32) -> Vec3 {

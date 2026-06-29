@@ -261,6 +261,49 @@ mod tests {
     }
 
     #[test]
+    fn recovery_heading_handles_cardinal_track_positions() {
+        let track = TrackSpec::default();
+        let center = track.center_radii();
+
+        assert_heading_close(track.recovery_heading(Vec2::new(center.x, 0.0), 0.0), 0.0);
+        assert_heading_close(
+            track.recovery_heading(Vec2::new(0.0, center.y), 0.0),
+            -FRAC_PI_2,
+        );
+        assert_heading_close(
+            track.recovery_heading(Vec2::new(-center.x, 0.0), std::f32::consts::PI),
+            std::f32::consts::PI,
+        );
+        assert_heading_close(
+            track.recovery_heading(Vec2::new(0.0, -center.y), 0.0),
+            FRAC_PI_2,
+        );
+    }
+
+    #[test]
+    fn recovery_heading_is_consistent_on_inner_and_outer_edges() {
+        let track = TrackSpec::default();
+
+        for radii in [track.inner_radii(), track.outer_radii()] {
+            assert_heading_close(track.recovery_heading(Vec2::new(radii.x, 0.0), 0.0), 0.0);
+            assert_heading_close(
+                track.recovery_heading(Vec2::new(0.0, -radii.y), 0.0),
+                FRAC_PI_2,
+            );
+        }
+    }
+
+    #[test]
+    fn recovery_heading_flips_to_match_reverse_travel_direction() {
+        let track = TrackSpec::default();
+        let position = track.start_position();
+
+        let heading = track.recovery_heading(position, -FRAC_PI_2);
+
+        assert_heading_close(heading, -FRAC_PI_2);
+    }
+
+    #[test]
     fn margin_reduces_recoverable_band_for_car_footprint() {
         let track = TrackSpec::default();
         let margin = 40.0;
@@ -301,5 +344,20 @@ mod tests {
         assert!(track.contains(start.position));
         assert!(start.position.x.is_finite());
         assert!(start.position.y.is_finite());
+    }
+
+    fn assert_heading_close(actual: f32, expected: f32) {
+        assert!(
+            angle_distance(actual, expected) < 1e-5,
+            "expected {expected}, got {actual}"
+        );
+    }
+
+    fn angle_distance(a: f32, b: f32) -> f32 {
+        let mut diff = (a - b).rem_euclid(std::f32::consts::TAU);
+        if diff > std::f32::consts::PI {
+            diff = std::f32::consts::TAU - diff;
+        }
+        diff.abs()
     }
 }
