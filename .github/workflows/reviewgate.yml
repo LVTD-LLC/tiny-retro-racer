@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: ReviewGate
         uses: LVTD-LLC/reviewgate@v0
@@ -24,4 +26,3 @@ jobs:
         with:
           preset: balanced
           gate_mode: report
-
