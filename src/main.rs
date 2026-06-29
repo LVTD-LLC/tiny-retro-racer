@@ -1,4 +1,3 @@
-use bevy::prelude::Vec2 as BevyVec2;
 use bevy::prelude::*;
 use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning};
 
@@ -43,28 +42,25 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         Sprite::from_color(
             Color::srgb(0.18, 0.18, 0.2),
-            BevyVec2::new(ROAD_WIDTH, ROAD_LENGTH),
+            Vec2::new(ROAD_WIDTH, ROAD_LENGTH),
         ),
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
     commands.spawn((
-        Sprite::from_color(
-            Color::srgb(0.9, 0.85, 0.34),
-            BevyVec2::new(12.0, ROAD_LENGTH),
-        ),
+        Sprite::from_color(Color::srgb(0.9, 0.85, 0.34), Vec2::new(12.0, ROAD_LENGTH)),
         Transform::from_xyz(0.0, 0.0, 1.0),
     ));
 
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.1, 0.55, 0.22), BevyVec2::new(900.0, 900.0)),
+        Sprite::from_color(Color::srgb(0.1, 0.55, 0.22), Vec2::new(900.0, 900.0)),
         Transform::from_xyz(0.0, 0.0, -1.0),
     ));
 
     commands.spawn((
         Sprite::from_color(
             Color::srgb(0.92, 0.18, 0.2),
-            BevyVec2::new(CAR_WIDTH, CAR_LENGTH),
+            Vec2::new(CAR_WIDTH, CAR_LENGTH),
         ),
         Transform::from_xyz(0.0, INITIAL_CAR_Y, 2.0),
         PlayerCar,
