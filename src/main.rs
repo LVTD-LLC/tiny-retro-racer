@@ -25,7 +25,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Tiny Retro Racer".into(),
-                resolution: (960, 540).into(),
+                resolution: bevy::window::WindowResolution::new(960, 540),
                 resizable: true,
                 ..default()
             }),
