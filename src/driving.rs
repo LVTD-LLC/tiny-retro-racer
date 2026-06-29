@@ -1,3 +1,8 @@
+//! Pure driving model for Tiny Retro Racer.
+//!
+//! Coordinates follow the Bevy 2D convention used by the app shell: `x`
+//! increases to the right, and `y` increases upward along the road.
+
 /// Minimal vector type that keeps the driving model free of Bevy/glam dependencies.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vec2 {

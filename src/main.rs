@@ -1,3 +1,4 @@
+use bevy::prelude::Vec2 as BevyVec2;
 use bevy::prelude::*;
 use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning};
 
@@ -42,25 +43,28 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         Sprite::from_color(
             Color::srgb(0.18, 0.18, 0.2),
-            Vec2::new(ROAD_WIDTH, ROAD_LENGTH),
+            BevyVec2::new(ROAD_WIDTH, ROAD_LENGTH),
         ),
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.9, 0.85, 0.34), Vec2::new(12.0, ROAD_LENGTH)),
+        Sprite::from_color(
+            Color::srgb(0.9, 0.85, 0.34),
+            BevyVec2::new(12.0, ROAD_LENGTH),
+        ),
         Transform::from_xyz(0.0, 0.0, 1.0),
     ));
 
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.1, 0.55, 0.22), Vec2::new(900.0, 900.0)),
+        Sprite::from_color(Color::srgb(0.1, 0.55, 0.22), BevyVec2::new(900.0, 900.0)),
         Transform::from_xyz(0.0, 0.0, -1.0),
     ));
 
     commands.spawn((
         Sprite::from_color(
             Color::srgb(0.92, 0.18, 0.2),
-            Vec2::new(CAR_WIDTH, CAR_LENGTH),
+            BevyVec2::new(CAR_WIDTH, CAR_LENGTH),
         ),
         Transform::from_xyz(0.0, INITIAL_CAR_Y, 2.0),
         PlayerCar,
@@ -91,6 +95,8 @@ fn update_player_car(
             .state
             .step(input, tuning.0, time.delta_secs().min(1.0 / 20.0));
 
+        // The car sprite uses Bevy's default center pivot, so these safe halves
+        // keep the whole car inside the centered placeholder road rectangle.
         let safe_half_width = ROAD_WIDTH * 0.5 - CAR_WIDTH * 0.5;
         let safe_half_length = ROAD_LENGTH * 0.5 - CAR_LENGTH * 0.5;
         controller.state.position.x = controller
@@ -106,6 +112,8 @@ fn update_player_car(
 
         transform.translation.x = controller.state.position.x;
         transform.translation.y = controller.state.position.y;
+        // The placeholder car sprite points up by default; negate the model
+        // heading so right turns rotate clockwise in screen space.
         transform.rotation = Quat::from_rotation_z(-controller.state.heading_radians);
     }
 }
