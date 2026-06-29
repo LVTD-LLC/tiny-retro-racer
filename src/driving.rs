@@ -319,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn recovery_speed_never_accelerates_slow_boundary_contacts() {
+    fn recovery_speed_never_accelerates_slow_boundary_contacts_without_accelerate() {
         let tuning = DrivingTuning {
             boundary_speed_retention: 0.92,
             boundary_min_forward_speed: 90.0,
