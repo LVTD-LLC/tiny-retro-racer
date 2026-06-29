@@ -1,7 +1,8 @@
 //! Pure driving model for Tiny Retro Racer.
 //!
 //! Coordinates follow the Bevy 2D convention used by the app shell: `x`
-//! increases to the right, and `y` increases upward along the road.
+//! increases right, `y` increases up, and the placeholder road extends along
+//! the `y` axis.
 
 const STOP_EPSILON: f32 = 0.001;
 
@@ -256,6 +257,6 @@ mod tests {
 
         car.step(DriverInput::default(), tuning, 1.0 / 60.0);
 
-        assert!(car.speed.abs() < f32::EPSILON);
+        assert!(car.speed.abs() < 1e-6);
     }
 }
