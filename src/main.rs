@@ -369,8 +369,10 @@ fn update_player_car(
         let recovery = footprint_safe_track.recover_position(controller.state.position);
         if recovery.corrected {
             controller.state.position = recovery.position;
-            controller.state.heading_radians = footprint_safe_track
-                .recovery_heading(controller.state.position, controller.state.heading_radians);
+            controller.state.heading_radians = recovery.heading_radians.unwrap_or_else(|| {
+                footprint_safe_track
+                    .recovery_heading(controller.state.position, controller.state.heading_radians)
+            });
             controller.state.speed = recovered_speed(controller.state.speed);
         }
 

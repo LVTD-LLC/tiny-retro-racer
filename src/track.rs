@@ -11,7 +11,6 @@ use crate::driving::{CarState, Vec2};
 const MIN_RADIUS: f32 = 32.0;
 const MIN_HALF_WIDTH: f32 = 12.0;
 const CENTER_EPSILON: f32 = 0.0001;
-const CENTER_RECOVERY_RADIUS: f32 = 0.25;
 const TANGENT_FLIP_DOT_EPSILON: f32 = 0.001;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -110,10 +109,7 @@ impl TrackSpec {
             };
         }
 
-        if !radius.is_finite()
-            || radius <= CENTER_EPSILON
-            || radius < inner * CENTER_RECOVERY_RADIUS
-        {
+        if !radius.is_finite() || radius <= CENTER_EPSILON {
             return TrackRecovery {
                 position: spec.start_position(),
                 heading_radians: Some(FRAC_PI_2),
@@ -240,14 +236,28 @@ mod tests {
     }
 
     #[test]
-    fn near_center_recovery_uses_safe_start_instead_of_huge_scale() {
+    fn exact_center_recovery_uses_safe_start_without_direction() {
         let track = TrackSpec::default();
 
-        let recovery = track.recover_position(Vec2::new(0.01, 0.0));
+        let recovery = track.recover_position(Vec2::ZERO);
 
         assert!(recovery.corrected);
         assert_eq!(recovery.position, track.start_position());
         assert_eq!(recovery.heading_radians, Some(FRAC_PI_2));
+    }
+
+    #[test]
+    fn reachable_center_grass_recovers_to_nearest_inner_edge() {
+        let track = TrackSpec::default();
+        let position = Vec2::new(45.0, 0.0);
+
+        let recovery = track.recover_position(position);
+
+        assert!(recovery.corrected);
+        assert!(track.contains(recovery.position));
+        assert_eq!(recovery.heading_radians, None);
+        assert!(recovery.position.x > position.x);
+        assert_eq!(recovery.position.y, 0.0);
     }
 
     #[test]
