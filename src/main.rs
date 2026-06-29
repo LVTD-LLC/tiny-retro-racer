@@ -3,7 +3,7 @@ use bevy::{
     prelude::*,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
-use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning};
+use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning, recovered_boundary_speed};
 use tiny_retro_racer::pixel_art::{self, PixelArt};
 use tiny_retro_racer::track::TrackSpec;
 
@@ -388,7 +388,11 @@ fn update_player_car(
                 footprint_safe_track
                     .recovery_heading(controller.state.position, controller.state.heading_radians)
             });
-            controller.state.speed = recovered_speed(controller.state.speed);
+            controller.state.speed = recovered_boundary_speed(
+                controller.state.speed,
+                EDGE_RECOVERY_SPEED_RETENTION,
+                RECOVERY_MIN_FORWARD_SPEED,
+            );
         }
 
         transform.translation.x = controller.state.position.x;
@@ -460,12 +464,4 @@ fn camera_target_for(state: &CarState, z: f32) -> Vec3 {
 
 fn car_footprint_margin() -> f32 {
     (CAR_WIDTH * 0.5).hypot(CAR_LENGTH * 0.5) + CAR_FOOTPRINT_PADDING
-}
-
-fn recovered_speed(speed: f32) -> f32 {
-    if speed > 0.0 {
-        (speed * EDGE_RECOVERY_SPEED_RETENTION).max(RECOVERY_MIN_FORWARD_SPEED)
-    } else {
-        0.0
-    }
 }
