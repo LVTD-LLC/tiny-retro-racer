@@ -1,0 +1,46 @@
+name: Desktop Builds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS release artifact
+            os: macos-latest
+            artifact_name: tiny-retro-racer-macos
+            binary_name: tiny-retro-racer
+          - name: Windows release artifact
+            os: windows-latest
+            artifact_name: tiny-retro-racer-windows
+            binary_name: tiny-retro-racer.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release --bin tiny-retro-racer
+
+      - name: Package artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "dist/${{ matrix.artifact_name }}"
+          cp "target/release/${{ matrix.binary_name }}" "dist/${{ matrix.artifact_name }}/"
+          cp README.md CHANGELOG.md "dist/${{ matrix.artifact_name }}/"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}
+          if-no-files-found: error

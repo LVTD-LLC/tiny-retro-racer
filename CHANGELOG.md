@@ -12,3 +12,5 @@
 - Added Bevy state flow with a start screen, Play button, keyboard start, gameplay cleanup, reset, and return-to-start controls.
 - Replaced the rectangular placeholder road with a closed oval circuit, smooth follow camera, and test-covered track recovery model.
 - Expanded research notes with Bevy 0.19 movement/state/camera references and a practical Steam/Steam Deck release checklist.
+- Added a manual first-playable verification checklist and desktop build notes.
+- Added a manual GitHub Actions workflow for macOS and Windows release artifacts.
