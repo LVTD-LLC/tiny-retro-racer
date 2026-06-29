@@ -35,6 +35,24 @@ impl Default for DrivingTuning {
     }
 }
 
+impl DrivingTuning {
+    pub fn sanitized(self) -> Self {
+        let fallback = Self::default();
+        let max_speed = finite_positive(self.max_speed, fallback.max_speed);
+
+        Self {
+            acceleration: finite_non_negative(self.acceleration, fallback.acceleration),
+            braking: finite_non_negative(self.braking, fallback.braking),
+            drag: finite_non_negative(self.drag, fallback.drag),
+            max_speed,
+            reverse_limit: finite(self.reverse_limit, fallback.reverse_limit)
+                .min(max_speed)
+                .min(0.0),
+            turn_rate: finite_non_negative(self.turn_rate, fallback.turn_rate),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct DriverInput {
     pub accelerate: bool,
@@ -62,7 +80,8 @@ impl Default for CarState {
 
 impl CarState {
     pub fn step(&mut self, input: DriverInput, tuning: DrivingTuning, delta_seconds: f32) {
-        let dt = delta_seconds.max(0.0);
+        let tuning = tuning.sanitized();
+        let dt = finite(delta_seconds, 0.0).clamp(0.0, 1.0 / 20.0);
         self.speed += throttle_delta(input, tuning) * dt;
         self.apply_drag(tuning.drag, dt);
         self.speed = self.speed.clamp(tuning.reverse_limit, tuning.max_speed);
@@ -95,10 +114,23 @@ fn throttle_delta(input: DriverInput, tuning: DrivingTuning) -> f32 {
 
 fn steering_axis(input: DriverInput) -> f32 {
     match (input.steer_left, input.steer_right) {
-        (true, false) => 1.0,
-        (false, true) => -1.0,
+        (true, false) => -1.0,
+        (false, true) => 1.0,
         (true, true) | (false, false) => 0.0,
     }
+}
+
+fn finite(value: f32, fallback: f32) -> f32 {
+    if value.is_finite() { value } else { fallback }
+}
+
+fn finite_non_negative(value: f32, fallback: f32) -> f32 {
+    finite(value, fallback).max(0.0)
+}
+
+fn finite_positive(value: f32, fallback: f32) -> f32 {
+    let value = finite(value, fallback);
+    if value > 0.0 { value } else { fallback }
 }
 
 #[cfg(test)]
@@ -154,5 +186,48 @@ mod tests {
         car.step(input, tuning, 1.0);
 
         assert_eq!(car.heading_radians, 0.0);
+    }
+
+    #[test]
+    fn left_steering_moves_toward_negative_x() {
+        let tuning = DrivingTuning::default();
+        let mut car = CarState {
+            speed: 200.0,
+            ..CarState::default()
+        };
+        let input = DriverInput {
+            steer_left: true,
+            ..DriverInput::default()
+        };
+
+        car.step(input, tuning, 1.0 / 60.0);
+
+        assert!(car.position.x < 0.0);
+    }
+
+    #[test]
+    fn invalid_tuning_does_not_panic_or_create_nan() {
+        let tuning = DrivingTuning {
+            max_speed: 0.0,
+            reverse_limit: f32::NAN,
+            turn_rate: f32::NAN,
+            ..DrivingTuning::default()
+        };
+        let mut car = CarState::default();
+
+        car.step(
+            DriverInput {
+                accelerate: true,
+                steer_right: true,
+                ..DriverInput::default()
+            },
+            tuning,
+            10.0,
+        );
+
+        assert!(car.speed.is_finite());
+        assert!(car.heading_radians.is_finite());
+        assert!(car.position.x.is_finite());
+        assert!(car.position.y.is_finite());
     }
 }

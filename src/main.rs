@@ -3,6 +3,9 @@ use tiny_retro_racer::driving::{CarState, DriverInput, DrivingTuning};
 
 const ROAD_WIDTH: f32 = 420.0;
 const ROAD_LENGTH: f32 = 720.0;
+const CAR_WIDTH: f32 = 38.0;
+const CAR_LENGTH: f32 = 66.0;
+const CAR_START_Y: f32 = -220.0;
 
 #[derive(Component)]
 struct PlayerCar;
@@ -22,7 +25,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Tiny Retro Racer".into(),
-                resolution: (960.0, 540.0).into(),
+                resolution: (960, 540).into(),
                 resizable: true,
                 ..default()
             }),
@@ -55,8 +58,11 @@ fn setup(mut commands: Commands) {
     ));
 
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.92, 0.18, 0.2), Vec2::new(38.0, 66.0)),
-        Transform::from_xyz(0.0, -220.0, 2.0),
+        Sprite::from_color(
+            Color::srgb(0.92, 0.18, 0.2),
+            Vec2::new(CAR_WIDTH, CAR_LENGTH),
+        ),
+        Transform::from_xyz(0.0, CAR_START_Y, 2.0),
         PlayerCar,
         CarController {
             state: CarState::default(),
@@ -78,20 +84,24 @@ fn update_player_car(
     };
 
     for (mut transform, mut controller) in &mut cars {
-        controller.state.step(input, tuning.0, time.delta_secs());
+        controller
+            .state
+            .step(input, tuning.0, time.delta_secs().min(1.0 / 20.0));
+
+        let safe_half_width = ROAD_WIDTH * 0.5 - CAR_WIDTH * 0.5;
+        let safe_half_length = ROAD_LENGTH * 0.5 - CAR_LENGTH * 0.5;
         controller.state.position.x = controller
             .state
             .position
             .x
-            .clamp(-ROAD_WIDTH * 0.42, ROAD_WIDTH * 0.42);
-        controller.state.position.y = controller
-            .state
-            .position
-            .y
-            .clamp(-ROAD_LENGTH * 0.46, ROAD_LENGTH * 0.46);
+            .clamp(-safe_half_width, safe_half_width);
+        controller.state.position.y = controller.state.position.y.clamp(
+            -safe_half_length - CAR_START_Y,
+            safe_half_length - CAR_START_Y,
+        );
 
         transform.translation.x = controller.state.position.x;
-        transform.translation.y = -220.0 + controller.state.position.y;
+        transform.translation.y = CAR_START_Y + controller.state.position.y;
         transform.rotation = Quat::from_rotation_z(-controller.state.heading_radians);
     }
 }
