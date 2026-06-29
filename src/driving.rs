@@ -179,7 +179,7 @@ mod tests {
             car.step(input, tuning, 1.0 / 60.0);
         }
 
-        assert_eq!(car.speed, tuning.reverse_limit);
+        assert!((car.speed - tuning.reverse_limit).abs() < f32::EPSILON);
     }
 
     #[test]
@@ -256,6 +256,6 @@ mod tests {
 
         car.step(DriverInput::default(), tuning, 1.0 / 60.0);
 
-        assert_eq!(car.speed, 0.0);
+        assert!(car.speed.abs() < f32::EPSILON);
     }
 }
