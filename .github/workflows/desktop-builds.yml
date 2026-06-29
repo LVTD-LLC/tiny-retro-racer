@@ -11,13 +11,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: macOS release artifact
-            os: macos-latest
-            artifact_name: tiny-retro-racer-macos
+          - name: macOS Apple Silicon release artifact
+            os: macos-14
+            target: aarch64-apple-darwin
+            artifact_name: tiny-retro-racer-macos-arm64
+            binary_name: tiny-retro-racer
+          - name: macOS Intel release artifact
+            os: macos-13
+            target: x86_64-apple-darwin
+            artifact_name: tiny-retro-racer-macos-x64
             binary_name: tiny-retro-racer
           - name: Windows release artifact
             os: windows-latest
-            artifact_name: tiny-retro-racer-windows
+            target: x86_64-pc-windows-msvc
+            artifact_name: tiny-retro-racer-windows-x64
             binary_name: tiny-retro-racer.exe
 
     steps:
@@ -25,17 +32,22 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Install target
+        shell: bash
+        run: rustup target add ${{ matrix.target }}
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Build release binary
-        run: cargo build --release --bin tiny-retro-racer
+        shell: bash
+        run: cargo build --release --bin tiny-retro-racer --target ${{ matrix.target }}
 
       - name: Package artifact
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "dist/${{ matrix.artifact_name }}"
-          cp "target/release/${{ matrix.binary_name }}" "dist/${{ matrix.artifact_name }}/"
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" "dist/${{ matrix.artifact_name }}/"
           cp README.md CHANGELOG.md "dist/${{ matrix.artifact_name }}/"
 
       - name: Upload artifact

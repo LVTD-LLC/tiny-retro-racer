@@ -59,6 +59,14 @@ impl TrackSpec {
         Vec2::new(0.0, -spec.center_radius_y)
     }
 
+    pub fn with_margin(self, margin: f32) -> Self {
+        let spec = self.sanitized();
+        Self {
+            half_width: (spec.half_width - margin.max(0.0)).max(MIN_HALF_WIDTH),
+            ..spec
+        }
+    }
+
     pub fn inner_scale(self) -> f32 {
         (1.0 - self.band_half_scale()).max(0.1)
     }
@@ -240,6 +248,19 @@ mod tests {
         let heading = track.recovery_heading(position, 0.0);
 
         assert!((heading - FRAC_PI_2).abs() < 1e-5);
+    }
+
+    #[test]
+    fn margin_reduces_recoverable_band_for_car_footprint() {
+        let track = TrackSpec::default();
+        let margin = 40.0;
+
+        let original_outer = track.outer_radii();
+        let safe_outer = track.with_margin(margin).outer_radii();
+
+        assert!(safe_outer.x < original_outer.x);
+        assert!(safe_outer.y < original_outer.y);
+        assert!(track.with_margin(margin).contains(track.start_position()));
     }
 
     #[test]

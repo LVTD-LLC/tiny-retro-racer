@@ -10,7 +10,9 @@ const CAR_WIDTH: f32 = 38.0;
 const CAR_LENGTH: f32 = 66.0;
 const CAMERA_FOLLOW_DECAY: f32 = 4.0;
 const CAMERA_BEHIND_DISTANCE: f32 = 120.0;
-const EDGE_RECOVERY_SPEED_FACTOR: f32 = 0.82;
+const CAR_BOUNDARY_MARGIN: f32 = 40.0;
+const EDGE_RECOVERY_SPEED_RETENTION: f32 = 0.92;
+const RECOVERY_MIN_FORWARD_SPEED: f32 = 90.0;
 const PLAY_FIELD_SIZE: f32 = 980.0;
 
 const START_BUTTON_NORMAL: Color = Color::srgb(0.16, 0.22, 0.28);
@@ -434,13 +436,13 @@ fn update_player_car(
             .state
             .step(input, tuning.0, time.delta_secs().min(1.0 / 20.0));
 
-        let recovery = track.0.recover_position(controller.state.position);
+        let safe_track = track.0.with_margin(CAR_BOUNDARY_MARGIN);
+        let recovery = safe_track.recover_position(controller.state.position);
         if recovery.corrected {
             controller.state.position = recovery.position;
-            controller.state.heading_radians = track
-                .0
+            controller.state.heading_radians = safe_track
                 .recovery_heading(controller.state.position, controller.state.heading_radians);
-            controller.state.speed *= EDGE_RECOVERY_SPEED_FACTOR;
+            controller.state.speed = recovered_speed(controller.state.speed);
         }
 
         transform.translation.x = controller.state.position.x;
@@ -506,4 +508,12 @@ fn camera_target_for(state: &CarState, z: f32) -> Vec3 {
         state.position.y - forward.y * CAMERA_BEHIND_DISTANCE,
         z,
     )
+}
+
+fn recovered_speed(speed: f32) -> f32 {
+    if speed > 0.0 {
+        (speed * EDGE_RECOVERY_SPEED_RETENTION).max(RECOVERY_MIN_FORWARD_SPEED)
+    } else {
+        0.0
+    }
 }

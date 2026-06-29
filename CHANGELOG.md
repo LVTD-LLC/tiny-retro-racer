@@ -15,3 +15,5 @@
 - Added a manual first-playable verification checklist and desktop build notes.
 - Added a manual GitHub Actions workflow for macOS and Windows release artifacts.
 - Added generated low-resolution pixel-art textures with nearest filtering for the first retro visual pass.
+- Tightened track recovery to account for the car footprint and avoid speed drain at boundaries.
+- Split desktop build artifact names by macOS and Windows architecture.

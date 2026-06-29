@@ -19,6 +19,11 @@ dist/tiny-retro-racer-macos/tiny-retro-racer
 
 This produces a raw executable, not a signed or notarized `.app` bundle.
 
+For CI artifacts, use explicit architecture names:
+
+- `tiny-retro-racer-macos-arm64` from `aarch64-apple-darwin`
+- `tiny-retro-racer-macos-x64` from `x86_64-apple-darwin`
+
 ## Windows Build
 
 Build on a Windows host or use the manual `Desktop Builds` GitHub Actions workflow:
@@ -40,8 +45,9 @@ dist/tiny-retro-racer-windows/tiny-retro-racer.exe
 
 The manual `.github/workflows/desktop-builds.yml` workflow builds:
 
-- `tiny-retro-racer-macos`
-- `tiny-retro-racer-windows`
+- `tiny-retro-racer-macos-arm64`
+- `tiny-retro-racer-macos-x64`
+- `tiny-retro-racer-windows-x64`
 
 Run it from GitHub Actions with `workflow_dispatch` when a desktop smoke build is needed. It uploads raw executable artifacts with the README and changelog. It does not sign, notarize, create installers, or publish a release.
 
