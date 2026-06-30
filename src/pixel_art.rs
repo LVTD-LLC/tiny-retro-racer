@@ -55,6 +55,48 @@ pub fn car() -> PixelArt {
     })
 }
 
+pub fn rear_race_car() -> PixelArt {
+    generate(20, 16, |x, y| {
+        const TIRE: Rgba = [18, 20, 24, 255];
+        const TIRE_HIGHLIGHT: Rgba = [48, 52, 58, 255];
+        const BODY: Rgba = [28, 80, 218, 255];
+        const BODY_DARK: Rgba = [15, 38, 94, 255];
+        const TEAL: Rgba = [34, 190, 190, 255];
+        const GLASS: Rgba = [220, 250, 255, 255];
+        const HELMET: Rgba = [252, 234, 74, 255];
+
+        if ((1..=4).contains(&x) || (15..=18).contains(&x)) && (10..=15).contains(&y) {
+            if y == 10 || y == 15 {
+                TIRE_HIGHLIGHT
+            } else {
+                TIRE
+            }
+        } else if (0..=19).contains(&x) && (8..=10).contains(&y) {
+            if y == 10 { BODY_DARK } else { BODY }
+        } else if (7..=12).contains(&x) && (4..=7).contains(&y) {
+            GLASS
+        } else if (8..=11).contains(&x) && (2..=5).contains(&y) {
+            HELMET
+        } else if (4..=7).contains(&x) && (9..=13).contains(&y)
+            || (12..=15).contains(&x) && (9..=13).contains(&y)
+        {
+            TEAL
+        } else if (6..=13).contains(&x) && (5..=15).contains(&y) {
+            if (8..=11).contains(&x) && (12..=15).contains(&y) {
+                TEAL
+            } else {
+                BODY
+            }
+        } else if (2..=5).contains(&x) && (6..=7).contains(&y)
+            || (14..=17).contains(&x) && (6..=7).contains(&y)
+        {
+            BODY_DARK
+        } else {
+            TRANSPARENT
+        }
+    })
+}
+
 pub fn start_line() -> PixelArt {
     generate(16, 3, |x, y| {
         if (x + y) % 2 == 0 {
@@ -126,6 +168,18 @@ mod tests {
         assert_eq!(art.pixel(5, 1), Some([255, 239, 128, 255]));
         assert_eq!(art.pixel(4, 4), Some([76, 172, 202, 255]));
         assert_eq!(art.pixel(4, 14), Some([126, 28, 34, 255]));
+    }
+
+    #[test]
+    fn rear_race_car_art_has_wide_tires_and_central_body() {
+        let art = rear_race_car();
+
+        assert_eq!((art.width, art.height), (20, 16));
+        assert_eq!(art.pixel(0, 0), Some(TRANSPARENT));
+        assert_eq!(art.pixel(2, 12), Some([18, 20, 24, 255]));
+        assert_eq!(art.pixel(10, 3), Some([252, 234, 74, 255]));
+        assert_eq!(art.pixel(9, 6), Some([220, 250, 255, 255]));
+        assert_eq!(art.pixel(9, 14), Some([34, 190, 190, 255]));
     }
 
     #[test]
