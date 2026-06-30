@@ -40,11 +40,12 @@ def mix(
     second: tuple[int, int, int, int],
     amount: float,
 ) -> tuple[int, int, int, int]:
-    red = round(first[0] + (second[0] - first[0]) * amount)
-    green = round(first[1] + (second[1] - first[1]) * amount)
-    blue = round(first[2] + (second[2] - first[2]) * amount)
-    alpha = round(first[3] + (second[3] - first[3]) * amount)
-    return (red, green, blue, alpha)
+    return (
+        round(first[0] + (second[0] - first[0]) * amount),
+        round(first[1] + (second[1] - first[1]) * amount),
+        round(first[2] + (second[2] - first[2]) * amount),
+        round(first[3] + (second[3] - first[3]) * amount),
+    )
 
 
 def inside_rounded_rect(
@@ -161,10 +162,10 @@ def scale_nearest(
 ) -> list[list[tuple[int, int, int, int]]]:
     scaled = []
     for y in range(size):
-        source_y = min(BASE_SIZE - 1, y * BASE_SIZE // size)
+        source_y = min(BASE_SIZE - 1, (y * BASE_SIZE + BASE_SIZE // 2) // size)
         row = []
         for x in range(size):
-            source_x = min(BASE_SIZE - 1, x * BASE_SIZE // size)
+            source_x = min(BASE_SIZE - 1, (x * BASE_SIZE + BASE_SIZE // 2) // size)
             row.append(pixels[source_y][source_x])
         scaled.append(row)
     return scaled

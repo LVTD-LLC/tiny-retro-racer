@@ -23,8 +23,8 @@ bundle_executable="tiny-retro-racer"
 version="$(awk -F '"' '/^version = / { print $2; exit }' "${root_dir}/Cargo.toml")"
 
 if [[ -z "${version}" ]]; then
-  echo "could not read version from ${root_dir}/Cargo.toml" >&2
-  exit 66
+  echo "could not extract version from ${root_dir}/Cargo.toml" >&2
+  exit 1
 fi
 
 if [[ ! -x "${binary_source}" ]]; then

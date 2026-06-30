@@ -4,6 +4,12 @@ Desktop builds are for internal testing until Rasul explicitly approves a public
 
 ## Local macOS Build
 
+Requires Xcode Command Line Tools for `iconutil`:
+
+```bash
+xcode-select --install
+```
+
 ```bash
 cargo build --release --bin tiny-retro-racer
 scripts/package-macos-app.sh
