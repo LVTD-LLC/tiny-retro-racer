@@ -11,6 +11,9 @@ The project intentionally tracks current stable Rust and current Bevy APIs. It s
 - `Left Arrow`: steer left
 - `Right Arrow`: steer right
 - `Down Arrow`: brake
+- `V`: toggle the camera view
+- `1`: behind-car view
+- `2`: overhead view
 - `R`: reset the car during play
 - `Esc`: return to the title screen
 
@@ -46,8 +49,9 @@ Current first-playable baseline:
 - Single controllable car on a closed oval placeholder circuit.
 - Track recovery clamps the car back onto the road instead of failing or getting stuck.
 - Kid-friendly driving and boundary recovery tuning live in the pure Rust model.
-- Smooth follow camera offsets behind the car so more road ahead remains visible.
-- Generated low-resolution pixel-art car, start line, and scenery textures render with nearest filtering.
+- Default pseudo-3D behind-car view with grass, horizon, road strips, curbs, and rear car sprite.
+- Toggleable overhead view preserves the original top-down track and smooth follow camera.
+- Generated low-resolution pixel-art cars, start line, and scenery textures render with nearest filtering.
 
 ## Project Links
 

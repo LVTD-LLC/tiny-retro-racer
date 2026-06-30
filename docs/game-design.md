@@ -50,6 +50,7 @@ The first playable slice now answers the next risk with an oval circuit:
 - Can a 4-year-old start the game with one clear action?
 - Can the car stay recoverable on a closed circuit without a crash/fail state?
 - Can the camera show the car from behind/above without flipping or hiding the road ahead?
+- Can a default behind-car render mode feel readable while preserving the overhead view as a fallback?
 
 ## Kid-Friendly Driving Model
 
@@ -76,5 +77,5 @@ Current feel targets:
 - Separate pure gameplay math from Bevy systems where practical. The initial driving model uses a tiny local `Vec2` to avoid pulling Bevy/glam into library tests; switch to `glam` if the math surface grows beyond simple position storage.
 - Represent the first circuit as a simple elliptical road band. The pure track model owns containment/recovery; the Bevy mesh only visualizes it.
 - Run driving simulation in a fixed timestep. Keep the camera in frame updates so it can smooth toward the car every rendered frame.
-- Keep the MVP camera in 2D with a behind-car offset rather than full 3D. This preserves the old-arcade above/behind feel with much lower tuning and asset cost; revisit a true 3D camera only after the driving loop proves fun.
+- Keep the MVP camera in 2D. The default mode uses a pseudo-3D behind-car renderer fed by the existing top-down driving model, while the overhead mode remains available as a readable fallback.
 - Keep visual placeholders intentionally simple until the driving loop feels right.
