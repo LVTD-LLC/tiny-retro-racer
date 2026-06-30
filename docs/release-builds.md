@@ -6,18 +6,18 @@ Desktop builds are for internal testing until Rasul explicitly approves a public
 
 ```bash
 cargo build --release --bin tiny-retro-racer
-mkdir -p dist/tiny-retro-racer-macos
-cp target/release/tiny-retro-racer dist/tiny-retro-racer-macos/
-cp README.md CHANGELOG.md dist/tiny-retro-racer-macos/
+scripts/package-macos-app.sh
 ```
 
 Expected local artifact path:
 
 ```text
-dist/tiny-retro-racer-macos/tiny-retro-racer
+dist/tiny-retro-racer-macos/Tiny Retro Racer.app
 ```
 
-This produces a raw executable, not a signed or notarized `.app` bundle.
+This produces an unsigned and unnotarized `.app` bundle with the checked-in
+`assets/app-icon.icns` logo. The raw executable lives inside the app bundle at
+`Tiny Retro Racer.app/Contents/MacOS/tiny-retro-racer`.
 
 For CI artifacts, use explicit architecture names:
 
@@ -32,6 +32,7 @@ Build on a Windows host or use the manual `Desktop Builds` GitHub Actions workfl
 cargo build --release --bin tiny-retro-racer
 mkdir -p dist/tiny-retro-racer-windows
 cp target/release/tiny-retro-racer.exe dist/tiny-retro-racer-windows/
+cp assets/app-icon.ico dist/tiny-retro-racer-windows/
 cp README.md CHANGELOG.md dist/tiny-retro-racer-windows/
 ```
 
@@ -41,15 +42,18 @@ Expected artifact path:
 dist/tiny-retro-racer-windows/tiny-retro-racer.exe
 ```
 
+The Windows executable embeds `assets/app-icon.ico` when built on Windows, and
+the artifact also includes that `.ico` file next to the executable.
+
 ## CI Artifact Workflow
 
 The manual `.github/workflows/desktop-builds.yml` workflow builds:
 
-- `tiny-retro-racer-macos-arm64`
-- `tiny-retro-racer-macos-x64`
+- `tiny-retro-racer-macos-arm64` containing `Tiny Retro Racer.app`
+- `tiny-retro-racer-macos-x64` containing `Tiny Retro Racer.app`
 - `tiny-retro-racer-windows-x64`
 
-Run it from GitHub Actions with `workflow_dispatch` when a desktop smoke build is needed. It uploads raw executable artifacts with the README and changelog. It does not sign, notarize, create installers, or publish a release.
+Run it from GitHub Actions with `workflow_dispatch` when a desktop smoke build is needed. It uploads macOS `.app` bundles and the Windows executable with the shared app icon, README, and changelog. It does not sign, notarize, create installers, or publish a release.
 
 ## Release Notes Convention
 
