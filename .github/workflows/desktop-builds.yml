@@ -46,9 +46,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "dist/${{ matrix.artifact_name }}"
-          cp "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" "dist/${{ matrix.artifact_name }}/"
-          cp README.md CHANGELOG.md "dist/${{ matrix.artifact_name }}/"
+          if [[ "${{ matrix.target }}" == *apple-darwin ]]; then
+            scripts/package-macos-app.sh "${{ matrix.target }}" "${{ matrix.artifact_name }}" "${{ matrix.binary_name }}"
+          else
+            mkdir -p "dist/${{ matrix.artifact_name }}"
+            cp "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" "dist/${{ matrix.artifact_name }}/"
+            cp README.md CHANGELOG.md "dist/${{ matrix.artifact_name }}/"
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

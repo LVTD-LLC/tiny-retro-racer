@@ -6,18 +6,18 @@ Desktop builds are for internal testing until Rasul explicitly approves a public
 
 ```bash
 cargo build --release --bin tiny-retro-racer
-mkdir -p dist/tiny-retro-racer-macos
-cp target/release/tiny-retro-racer dist/tiny-retro-racer-macos/
-cp README.md CHANGELOG.md dist/tiny-retro-racer-macos/
+scripts/package-macos-app.sh
 ```
 
 Expected local artifact path:
 
 ```text
-dist/tiny-retro-racer-macos/tiny-retro-racer
+dist/tiny-retro-racer-macos/Tiny Retro Racer.app
 ```
 
-This produces a raw executable, not a signed or notarized `.app` bundle.
+This produces an unsigned and unnotarized `.app` bundle with a generated
+`AppIcon.icns` logo. The raw executable lives inside the app bundle at
+`Tiny Retro Racer.app/Contents/MacOS/tiny-retro-racer`.
 
 For CI artifacts, use explicit architecture names:
 
@@ -45,11 +45,11 @@ dist/tiny-retro-racer-windows/tiny-retro-racer.exe
 
 The manual `.github/workflows/desktop-builds.yml` workflow builds:
 
-- `tiny-retro-racer-macos-arm64`
-- `tiny-retro-racer-macos-x64`
+- `tiny-retro-racer-macos-arm64` containing `Tiny Retro Racer.app`
+- `tiny-retro-racer-macos-x64` containing `Tiny Retro Racer.app`
 - `tiny-retro-racer-windows-x64`
 
-Run it from GitHub Actions with `workflow_dispatch` when a desktop smoke build is needed. It uploads raw executable artifacts with the README and changelog. It does not sign, notarize, create installers, or publish a release.
+Run it from GitHub Actions with `workflow_dispatch` when a desktop smoke build is needed. It uploads macOS `.app` bundles and the Windows raw executable with the README and changelog. It does not sign, notarize, create installers, or publish a release.
 
 ## Release Notes Convention
 
