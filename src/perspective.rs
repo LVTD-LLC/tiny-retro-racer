@@ -9,6 +9,13 @@ use crate::track::TrackSpec;
 
 const MIN_SEGMENT_COUNT: usize = 2;
 const MIN_DISTANCE_GAP: f32 = 1.0;
+const DEFAULT_NEAR_DISTANCE: f32 = 18.0;
+const DEFAULT_FAR_DISTANCE: f32 = 780.0;
+const DEFAULT_HORIZON_Y: f32 = 54.0;
+const DEFAULT_BOTTOM_Y: f32 = -266.0;
+const DEFAULT_WORLD_TO_SCREEN: f32 = 7.2;
+const DEFAULT_CAMERA_DEPTH: f32 = 125.0;
+const DEFAULT_CENTER_X_LIMIT: f32 = 520.0;
 
 #[derive(Clone, Copy, Debug)]
 pub struct BehindProjection {
@@ -24,13 +31,13 @@ pub struct BehindProjection {
 impl Default for BehindProjection {
     fn default() -> Self {
         Self {
-            near_distance: 18.0,
-            far_distance: 780.0,
-            horizon_y: 54.0,
-            bottom_y: -266.0,
-            world_to_screen: 7.2,
-            camera_depth: 125.0,
-            center_x_limit: 520.0,
+            near_distance: DEFAULT_NEAR_DISTANCE,
+            far_distance: DEFAULT_FAR_DISTANCE,
+            horizon_y: DEFAULT_HORIZON_Y,
+            bottom_y: DEFAULT_BOTTOM_Y,
+            world_to_screen: DEFAULT_WORLD_TO_SCREEN,
+            camera_depth: DEFAULT_CAMERA_DEPTH,
+            center_x_limit: DEFAULT_CENTER_X_LIMIT,
         }
     }
 }
@@ -69,28 +76,21 @@ impl BehindProjection {
     }
 
     fn distance_at(self, depth_t: f32) -> f32 {
-        let near = finite_non_negative(
-            self.near_distance,
-            BehindProjection::default().near_distance,
-        );
-        let far = finite_non_negative(self.far_distance, BehindProjection::default().far_distance)
+        let near = finite_non_negative(self.near_distance, DEFAULT_NEAR_DISTANCE);
+        let far = finite_non_negative(self.far_distance, DEFAULT_FAR_DISTANCE)
             .max(near + MIN_DISTANCE_GAP);
         near + (far - near) * depth_t
     }
 
     fn screen_scale(self, distance: f32) -> f32 {
-        let camera_depth =
-            finite_positive(self.camera_depth, BehindProjection::default().camera_depth);
-        let world_to_screen = finite_positive(
-            self.world_to_screen,
-            BehindProjection::default().world_to_screen,
-        );
+        let camera_depth = finite_positive(self.camera_depth, DEFAULT_CAMERA_DEPTH);
+        let world_to_screen = finite_positive(self.world_to_screen, DEFAULT_WORLD_TO_SCREEN);
         world_to_screen * camera_depth / (distance + camera_depth)
     }
 
     fn screen_y(self, depth_t: f32) -> f32 {
-        let horizon_y = finite(self.horizon_y, BehindProjection::default().horizon_y);
-        let bottom_y = finite(self.bottom_y, BehindProjection::default().bottom_y);
+        let horizon_y = finite(self.horizon_y, DEFAULT_HORIZON_Y);
+        let bottom_y = finite(self.bottom_y, DEFAULT_BOTTOM_Y);
         horizon_y + (bottom_y - horizon_y) * (1.0 - depth_t).powf(1.55)
     }
 }

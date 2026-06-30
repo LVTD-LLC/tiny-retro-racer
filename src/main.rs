@@ -654,11 +654,16 @@ fn update_hud_text(view_mode: Res<ViewModeState>, mut texts: Query<&mut Text, Wi
 }
 
 fn update_behind_view(
+    view_mode: Res<ViewModeState>,
     track: Res<Track>,
     cars: Query<&CarController, With<PlayerCar>>,
     mut pieces: Query<(&BehindRoadPiece, &mut Sprite, &mut Transform)>,
     mut rear_cars: Query<&mut Transform, (With<BehindPlayerCar>, Without<BehindRoadPiece>)>,
 ) {
+    if view_mode.mode != ViewMode::Behind {
+        return;
+    }
+
     let Ok(controller) = cars.single() else {
         return;
     };
@@ -703,7 +708,7 @@ fn update_behind_view(
                 transform.translation.y = y;
             }
             BehindRoadPieceKind::RightCurb => {
-                sprite.color = curb_color(piece.index + 1);
+                sprite.color = curb_color(piece.index);
                 sprite.custom_size = Some(Vec2::new(near.curb_width, segment_height + 1.0));
                 transform.translation.x =
                     near.center_x + near.road_width * 0.5 + near.curb_width * 0.5;
@@ -814,6 +819,11 @@ fn update_follow_camera(
     };
 
     let target = camera_target_for_view(&controller.state, camera.translation.z, view_mode.mode);
+    if view_mode.is_changed() && view_mode.mode == ViewMode::Behind {
+        camera.translation = target;
+        return;
+    }
+
     let delta_seconds = time.delta_secs().clamp(0.0, CAMERA_MAX_DELTA_SECONDS);
     // Exponential smoothing is stable across frame rates; the clamp prevents
     // one delayed frame from snapping the camera after a stall or tab switch.
