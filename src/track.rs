@@ -6,10 +6,11 @@
 
 use std::f32::consts::FRAC_PI_2;
 
-use crate::driving::{CarState, Vec2};
+use crate::driving::{CarState, DriverInput, DrivingTuning, Vec2, recovered_boundary_speed};
 
 const MIN_RADIUS: f32 = 32.0;
 const MIN_HALF_WIDTH: f32 = 12.0;
+const RECOVERY_RADIUS_INSET: f32 = 0.001;
 const TANGENT_FLIP_DOT_EPSILON: f32 = 0.001;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -24,7 +25,7 @@ impl Default for TrackSpec {
         Self {
             center_radius_x: 230.0,
             center_radius_y: 320.0,
-            half_width: 86.0,
+            half_width: 104.0,
         }
     }
 }
@@ -67,6 +68,17 @@ impl TrackSpec {
 
     pub fn recover_position_with_margin(self, position: Vec2, margin: f32) -> TrackRecovery {
         self.with_margin(margin).recover_position(position)
+    }
+
+    pub fn recover_car_state_with_margin(
+        self,
+        state: CarState,
+        input: DriverInput,
+        tuning: DrivingTuning,
+        margin: f32,
+    ) -> CarStateRecovery {
+        self.with_margin(margin)
+            .recover_car_state(state, input, tuning)
     }
 
     pub fn inner_scale(self) -> f32 {
@@ -117,9 +129,12 @@ impl TrackSpec {
         }
 
         let position = if radius == 0.0 {
-            Vec2::new(0.0, -spec.center_radius_y * inner)
+            Vec2::new(
+                0.0,
+                -spec.center_radius_y * recovered_radius(radius, inner, outer),
+            )
         } else {
-            let target_radius = radius.clamp(inner, outer);
+            let target_radius = recovered_radius(radius, inner, outer);
             let scale = target_radius / radius;
             Vec2::new(position.x * scale, position.y * scale)
         };
@@ -127,6 +142,34 @@ impl TrackSpec {
         TrackRecovery {
             position,
             heading_radians: None,
+            corrected: true,
+        }
+    }
+
+    pub fn recover_car_state(
+        self,
+        mut state: CarState,
+        input: DriverInput,
+        tuning: DrivingTuning,
+    ) -> CarStateRecovery {
+        let spec = self.sanitized();
+        let recovery = spec.recover_position(state.position);
+
+        if !recovery.corrected {
+            return CarStateRecovery {
+                state,
+                corrected: false,
+            };
+        }
+
+        state.position = recovery.position;
+        state.heading_radians = recovery
+            .heading_radians
+            .unwrap_or_else(|| spec.recovery_heading(state.position, state.heading_radians));
+        state.speed = recovered_boundary_speed(state.speed, input, tuning);
+
+        CarStateRecovery {
+            state,
             corrected: true,
         }
     }
@@ -180,11 +223,25 @@ pub struct TrackRecovery {
     pub corrected: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CarStateRecovery {
+    pub state: CarState,
+    pub corrected: bool,
+}
+
 fn finite_positive(value: f32, fallback: f32) -> f32 {
     if value.is_finite() && value > 0.0 {
         value
     } else {
         fallback
+    }
+}
+
+fn recovered_radius(radius: f32, inner: f32, outer: f32) -> f32 {
+    if radius < inner {
+        (inner + RECOVERY_RADIUS_INSET).min(outer)
+    } else {
+        (outer - RECOVERY_RADIUS_INSET).max(inner)
     }
 }
 
@@ -239,13 +296,13 @@ mod tests {
     }
 
     #[test]
-    fn exact_center_recovery_uses_inner_edge_without_forced_heading() {
+    fn exact_center_recovery_uses_inner_band_without_forced_heading() {
         let track = TrackSpec::default();
 
         let recovery = track.recover_position(Vec2::ZERO);
 
         assert!(recovery.corrected);
-        assert_eq!(recovery.position, Vec2::new(0.0, -track.inner_radii().y));
+        assert!(track.normalized_radius(recovery.position) > track.inner_scale());
         assert_eq!(recovery.heading_radians, None);
     }
 
@@ -357,6 +414,89 @@ mod tests {
         assert!(track.contains(recovery.position));
         assert!(track.contains_with_margin(recovery.position, margin));
         assert!(recovery.position.y > boundary_center.y);
+    }
+
+    #[test]
+    fn car_state_recovery_corrects_heading_speed_and_position_together() {
+        let track = TrackSpec::default();
+        let tuning = DrivingTuning::default();
+        let state = CarState {
+            position: Vec2::new(0.0, -1_000.0),
+            heading_radians: 0.0,
+            speed: 0.0,
+        };
+        let input = DriverInput {
+            accelerate: true,
+            ..DriverInput::default()
+        };
+
+        let recovery = track.recover_car_state(state, input, tuning);
+
+        assert!(recovery.corrected);
+        assert!(track.contains(recovery.state.position));
+        assert_heading_close(recovery.state.heading_radians, FRAC_PI_2);
+        assert_eq!(
+            recovery.state.speed,
+            tuning.sanitized().boundary_accelerate_nudge_speed
+        );
+    }
+
+    #[test]
+    fn car_state_recovery_preserves_uncorrected_state() {
+        let track = TrackSpec::default();
+        let tuning = DrivingTuning::default();
+        let state = CarState {
+            position: track.start_position(),
+            heading_radians: FRAC_PI_2,
+            speed: 120.0,
+        };
+
+        let recovery = track.recover_car_state(state, DriverInput::default(), tuning);
+
+        assert!(!recovery.corrected);
+        assert_eq!(recovery.state, state);
+    }
+
+    #[test]
+    fn car_state_recovery_stops_reverse_edge_contacts() {
+        let track = TrackSpec::default();
+        let tuning = DrivingTuning::default();
+        let state = CarState {
+            position: Vec2::new(0.0, -1_000.0),
+            heading_radians: 0.0,
+            speed: -25.0,
+        };
+
+        let recovery = track.recover_car_state(state, DriverInput::default(), tuning);
+
+        assert!(recovery.corrected);
+        assert_eq!(recovery.state.speed, 0.0);
+    }
+
+    #[test]
+    fn repeated_kid_style_steering_stays_recoverable() {
+        let track = TrackSpec::default();
+        let tuning = DrivingTuning::default();
+        let margin = 40.0;
+        let input = DriverInput {
+            accelerate: true,
+            steer_left: true,
+            ..DriverInput::default()
+        };
+        let mut state = track.start_state();
+
+        for _ in 0..720 {
+            state.step(input, tuning, 1.0 / 60.0);
+            state = track
+                .recover_car_state_with_margin(state, input, tuning, margin)
+                .state;
+
+            assert!(track.contains_with_margin(state.position, margin));
+            assert!(state.speed >= 0.0);
+            assert!(state.heading_radians.is_finite());
+        }
+
+        assert!(state.speed > 0.0);
     }
 
     #[test]

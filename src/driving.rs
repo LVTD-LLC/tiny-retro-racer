@@ -29,17 +29,23 @@ pub struct DrivingTuning {
     pub max_speed: f32,
     pub reverse_limit: f32,
     pub turn_rate: f32,
+    pub boundary_speed_retention: f32,
+    pub boundary_min_forward_speed: f32,
+    pub boundary_accelerate_nudge_speed: f32,
 }
 
 impl Default for DrivingTuning {
     fn default() -> Self {
         Self {
-            acceleration: 280.0,
-            braking: 420.0,
-            drag: 65.0,
-            max_speed: 520.0,
-            reverse_limit: -60.0,
-            turn_rate: 2.4,
+            acceleration: 360.0,
+            braking: 560.0,
+            drag: 78.0,
+            max_speed: 430.0,
+            reverse_limit: -42.0,
+            turn_rate: 2.75,
+            boundary_speed_retention: 0.94,
+            boundary_min_forward_speed: 95.0,
+            boundary_accelerate_nudge_speed: 72.0,
         }
     }
 }
@@ -48,6 +54,17 @@ impl DrivingTuning {
     pub fn sanitized(self) -> Self {
         let fallback = Self::default();
         let max_speed = finite_positive(self.max_speed, fallback.max_speed);
+        let boundary_min_forward_speed = finite_non_negative(
+            self.boundary_min_forward_speed,
+            fallback.boundary_min_forward_speed,
+        )
+        .min(max_speed);
+        let boundary_accelerate_nudge_speed = finite_non_negative(
+            self.boundary_accelerate_nudge_speed,
+            fallback.boundary_accelerate_nudge_speed,
+        )
+        .min(max_speed)
+        .min(boundary_min_forward_speed);
 
         Self {
             acceleration: finite_non_negative(self.acceleration, fallback.acceleration),
@@ -58,6 +75,13 @@ impl DrivingTuning {
                 .min(max_speed)
                 .min(0.0),
             turn_rate: finite_non_negative(self.turn_rate, fallback.turn_rate),
+            boundary_speed_retention: finite(
+                self.boundary_speed_retention,
+                fallback.boundary_speed_retention,
+            )
+            .clamp(0.0, 1.0),
+            boundary_min_forward_speed,
+            boundary_accelerate_nudge_speed,
         }
     }
 }
@@ -133,19 +157,27 @@ fn steering_axis(input: DriverInput) -> f32 {
     }
 }
 
-pub fn recovered_boundary_speed(speed: f32, retention: f32, min_forward_speed: f32) -> f32 {
+pub fn recovered_boundary_speed(speed: f32, input: DriverInput, tuning: DrivingTuning) -> f32 {
+    let tuning = tuning.sanitized();
+    let input_nudge_speed = if input.accelerate {
+        tuning.boundary_accelerate_nudge_speed
+    } else {
+        0.0
+    };
+
     if speed <= 0.0 {
-        return 0.0;
+        return input_nudge_speed;
     }
 
-    let retention = finite(retention, 1.0).clamp(0.0, 1.0);
-    let min_forward_speed = finite_non_negative(min_forward_speed, 0.0);
-
-    if speed <= min_forward_speed {
-        return speed;
+    if speed <= tuning.boundary_min_forward_speed {
+        return speed.max(input_nudge_speed).min(tuning.max_speed);
     }
 
-    (speed * retention).max(min_forward_speed).min(speed)
+    (speed * tuning.boundary_speed_retention)
+        .max(tuning.boundary_min_forward_speed)
+        .max(input_nudge_speed)
+        .min(speed)
+        .min(tuning.max_speed)
 }
 
 fn finite(value: f32, fallback: f32) -> f32 {
@@ -263,6 +295,9 @@ mod tests {
             max_speed: 0.0,
             reverse_limit: f32::NAN,
             turn_rate: f32::NAN,
+            boundary_speed_retention: f32::NAN,
+            boundary_min_forward_speed: f32::NAN,
+            boundary_accelerate_nudge_speed: f32::NAN,
             ..DrivingTuning::default()
         };
         let mut car = CarState::default();
@@ -284,21 +319,97 @@ mod tests {
     }
 
     #[test]
-    fn recovery_speed_never_accelerates_slow_boundary_contacts() {
-        assert_eq!(recovered_boundary_speed(5.0, 0.92, 90.0), 5.0);
-        assert_eq!(recovered_boundary_speed(90.0, 0.92, 90.0), 90.0);
+    fn recovery_speed_never_accelerates_slow_boundary_contacts_without_accelerate() {
+        let tuning = DrivingTuning {
+            boundary_speed_retention: 0.92,
+            boundary_min_forward_speed: 90.0,
+            boundary_accelerate_nudge_speed: 70.0,
+            ..DrivingTuning::default()
+        };
+
+        assert_eq!(
+            recovered_boundary_speed(5.0, DriverInput::default(), tuning),
+            5.0
+        );
+        assert_eq!(
+            recovered_boundary_speed(90.0, DriverInput::default(), tuning),
+            90.0
+        );
     }
 
     #[test]
     fn recovery_speed_retains_floor_for_fast_boundary_contacts() {
-        assert_eq!(recovered_boundary_speed(200.0, 0.92, 90.0), 184.0);
-        assert_eq!(recovered_boundary_speed(92.0, 0.92, 90.0), 90.0);
+        let tuning = DrivingTuning {
+            boundary_speed_retention: 0.92,
+            boundary_min_forward_speed: 90.0,
+            boundary_accelerate_nudge_speed: 70.0,
+            ..DrivingTuning::default()
+        };
+
+        assert_eq!(
+            recovered_boundary_speed(200.0, DriverInput::default(), tuning),
+            184.0
+        );
+        assert_eq!(
+            recovered_boundary_speed(92.0, DriverInput::default(), tuning),
+            90.0
+        );
     }
 
     #[test]
-    fn recovery_speed_stops_reverse_boundary_contacts() {
-        assert_eq!(recovered_boundary_speed(-20.0, 0.92, 90.0), 0.0);
-        assert_eq!(recovered_boundary_speed(0.0, 0.92, 90.0), 0.0);
+    fn recovery_speed_stops_reverse_boundary_contacts_without_accelerate() {
+        let tuning = DrivingTuning {
+            boundary_speed_retention: 0.92,
+            boundary_min_forward_speed: 90.0,
+            boundary_accelerate_nudge_speed: 70.0,
+            ..DrivingTuning::default()
+        };
+
+        assert_eq!(
+            recovered_boundary_speed(-20.0, DriverInput::default(), tuning),
+            0.0
+        );
+        assert_eq!(
+            recovered_boundary_speed(0.0, DriverInput::default(), tuning),
+            0.0
+        );
+    }
+
+    #[test]
+    fn recovery_speed_gives_accelerating_player_a_forward_nudge() {
+        let tuning = DrivingTuning {
+            boundary_speed_retention: 0.92,
+            boundary_min_forward_speed: 90.0,
+            boundary_accelerate_nudge_speed: 70.0,
+            ..DrivingTuning::default()
+        };
+        let input = DriverInput {
+            accelerate: true,
+            ..DriverInput::default()
+        };
+
+        assert_eq!(recovered_boundary_speed(-20.0, input, tuning), 70.0);
+        assert_eq!(recovered_boundary_speed(0.0, input, tuning), 70.0);
+        assert_eq!(recovered_boundary_speed(5.0, input, tuning), 70.0);
+    }
+
+    #[test]
+    fn recovery_nudge_cannot_exceed_min_forward_speed_after_sanitizing() {
+        let tuning = DrivingTuning {
+            boundary_min_forward_speed: 40.0,
+            boundary_accelerate_nudge_speed: 120.0,
+            ..DrivingTuning::default()
+        };
+        let input = DriverInput {
+            accelerate: true,
+            ..DriverInput::default()
+        };
+
+        let sanitized = tuning.sanitized();
+
+        assert_eq!(sanitized.boundary_min_forward_speed, 40.0);
+        assert_eq!(sanitized.boundary_accelerate_nudge_speed, 40.0);
+        assert_eq!(recovered_boundary_speed(5.0, input, tuning), 40.0);
     }
 
     #[test]

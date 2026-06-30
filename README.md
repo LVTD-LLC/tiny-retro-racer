@@ -45,6 +45,7 @@ Current first-playable baseline:
 - Start screen with button, `Enter`, and `Space` start paths.
 - Single controllable car on a closed oval placeholder circuit.
 - Track recovery clamps the car back onto the road instead of failing or getting stuck.
+- Kid-friendly driving and boundary recovery tuning live in the pure Rust model.
 - Smooth follow camera offsets behind the car so more road ahead remains visible.
 - Generated low-resolution pixel-art car, start line, and scenery textures render with nearest filtering.
 
