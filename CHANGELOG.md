@@ -19,3 +19,4 @@
 - Split desktop build artifact names by macOS and Windows architecture.
 - Tuned kid-friendly driving feel with wider default track width and centralized boundary recovery speed rules.
 - Added macOS `.app` packaging with a generated Tiny Retro Racer icon for Finder artifacts.
+- Added checked-in shared app icon assets for macOS and Windows desktop artifacts.

@@ -51,6 +51,7 @@ jobs:
           else
             mkdir -p "dist/${{ matrix.artifact_name }}"
             cp "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" "dist/${{ matrix.artifact_name }}/"
+            cp assets/app-icon.ico "dist/${{ matrix.artifact_name }}/"
             cp README.md CHANGELOG.md "dist/${{ matrix.artifact_name }}/"
           fi
 

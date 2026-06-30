@@ -20,6 +20,7 @@ contents_dir="${app_dir}/Contents"
 macos_dir="${contents_dir}/MacOS"
 resources_dir="${contents_dir}/Resources"
 bundle_executable="tiny-retro-racer"
+icon_source="${root_dir}/assets/app-icon.icns"
 version="$(awk -F '"' '/^version = / { print $2; exit }' "${root_dir}/Cargo.toml")"
 
 if [[ -z "${version}" ]]; then
@@ -33,14 +34,9 @@ if [[ ! -x "${binary_source}" ]]; then
   exit 66
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 is required to generate the macOS app icon" >&2
-  exit 69
-fi
-
-if ! command -v iconutil >/dev/null 2>&1; then
-  echo "iconutil is required to create the macOS app icon" >&2
-  exit 69
+if [[ ! -f "${icon_source}" ]]; then
+  echo "missing macOS app icon: ${icon_source}" >&2
+  exit 66
 fi
 
 rm -rf "${dist_dir}"
@@ -49,12 +45,7 @@ mkdir -p "${macos_dir}" "${resources_dir}"
 cp "${binary_source}" "${macos_dir}/${bundle_executable}"
 chmod +x "${macos_dir}/${bundle_executable}"
 cp "${root_dir}/README.md" "${root_dir}/CHANGELOG.md" "${dist_dir}/"
-
-icon_work_dir="$(mktemp -d)"
-trap 'rm -rf "${icon_work_dir}"' EXIT
-
-python3 "${script_dir}/generate-macos-icon.py" "${icon_work_dir}/AppIcon.iconset" >/dev/null
-iconutil -c icns "${icon_work_dir}/AppIcon.iconset" -o "${resources_dir}/AppIcon.icns"
+cp "${icon_source}" "${resources_dir}/AppIcon.icns"
 
 cat >"${contents_dir}/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
