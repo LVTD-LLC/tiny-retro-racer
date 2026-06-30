@@ -40,10 +40,11 @@ def mix(
     second: tuple[int, int, int, int],
     amount: float,
 ) -> tuple[int, int, int, int]:
-    return tuple(
-        round(first[channel] + (second[channel] - first[channel]) * amount)
-        for channel in range(4)
-    )
+    red = round(first[0] + (second[0] - first[0]) * amount)
+    green = round(first[1] + (second[1] - first[1]) * amount)
+    blue = round(first[2] + (second[2] - first[2]) * amount)
+    alpha = round(first[3] + (second[3] - first[3]) * amount)
+    return (red, green, blue, alpha)
 
 
 def inside_rounded_rect(

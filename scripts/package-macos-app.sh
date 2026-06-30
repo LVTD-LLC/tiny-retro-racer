@@ -22,10 +22,20 @@ resources_dir="${contents_dir}/Resources"
 bundle_executable="tiny-retro-racer"
 version="$(awk -F '"' '/^version = / { print $2; exit }' "${root_dir}/Cargo.toml")"
 
+if [[ -z "${version}" ]]; then
+  echo "could not read version from ${root_dir}/Cargo.toml" >&2
+  exit 66
+fi
+
 if [[ ! -x "${binary_source}" ]]; then
   echo "missing release binary: ${binary_source}" >&2
   echo "build it first with cargo build --release --bin tiny-retro-racer${target:+ --target ${target}}" >&2
   exit 66
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 is required to generate the macOS app icon" >&2
+  exit 69
 fi
 
 if ! command -v iconutil >/dev/null 2>&1; then
